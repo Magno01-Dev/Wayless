@@ -1,0 +1,85 @@
+name: Bootstrap WAYLESS baseline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - WAYLESS_GITHUB_IMPORT_2026-09-24.zip
+
+permissions:
+  contents: write
+
+jobs:
+  import-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract prepared WAYLESS baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .wayless-import
+          mkdir .wayless-import
+          unzip -q WAYLESS_GITHUB_IMPORT_2026-09-24.zip -d .wayless-import
+          cp -a .wayless-import/WAYLESS_GITHUB_IMPORT_2026-09-24/. .
+          rm -rf .wayless-import
+          rm -f WAYLESS_GITHUB_IMPORT_2026-09-24.zip
+
+      - name: Verify all 257 scripts against snapshot manifest
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          manifest_path = Path('metadata/SOURCE_SNAPSHOT_MANIFEST.json')
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+          scripts = manifest['scripts']
+
+          assert manifest['snapshot_date'] == '2026-09-24', manifest['snapshot_date']
+          assert manifest['total_scripts'] == 257, manifest['total_scripts']
+          assert len(scripts) == 257, len(scripts)
+
+          expected_paths = set()
+          for item in scripts:
+              path = Path(item['repo_path'])
+              expected_paths.add(path.as_posix())
+              if not path.is_file():
+                  raise SystemExit(f'MISSING: {path}')
+              digest = hashlib.sha256(path.read_bytes()).hexdigest()
+              if digest != item['source_sha256']:
+                  raise SystemExit(f'HASH MISMATCH: {path}: {digest} != {item["source_sha256"]}')
+
+          actual_paths = {p.as_posix() for p in Path('src').rglob('*.luau')}
+          if actual_paths != expected_paths:
+              missing = sorted(expected_paths - actual_paths)
+              extra = sorted(actual_paths - expected_paths)
+              raise SystemExit(f'SOURCE TREE MISMATCH. Missing={missing} Extra={extra}')
+
+          print('WAYLESS baseline verified: 257/257 scripts match SOURCE_SNAPSHOT_MANIFEST.json')
+          PY
+
+      - name: Commit verified baseline, tag it, and create develop
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "WAYLESS Baseline Import"
+          git config user.email "actions@users.noreply.github.com"
+
+          # This workflow is only a bootstrap mechanism; it is not part of the prepared baseline.
+          rm -f .github/workflows/bootstrap-wayless-baseline.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+
+          git add -A
+          git commit -m "baseline: live installed source 2026-09-24"
+          git tag -f baseline-2026-09-24
+          git push origin HEAD:main
+          git push origin refs/tags/baseline-2026-09-24 --force
+          git branch -f develop HEAD
+          git push origin develop --force
