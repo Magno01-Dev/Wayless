@@ -1,0 +1,18 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# temporary exports
+*.rbxm
+*.rbxmx
+*.rbxl
+*.rbxlx
+*.tmp
+*.log
+
+# credentials
+.env
+.env.*
+!.env.example
