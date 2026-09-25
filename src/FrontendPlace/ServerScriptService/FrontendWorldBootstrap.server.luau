@@ -1,7 +1,7 @@
 --!strict
 -- ServerScriptService > FrontendWorldBootstrap
 --
--- WAYLESS Frontend scene bootstrap v3.
+-- WAYLESS Frontend scene bootstrap v5 - markers only / no placeholder art.
 -- Streaming-safe creation scene architecture.
 --
 -- IMPORTANT:
@@ -11,7 +11,6 @@
 -- Keep FrontendSceneMarkers as a Model. Its parts may be moved freely when
 -- building the final character-creation environment.
 
-local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
@@ -22,33 +21,19 @@ local Workspace = game:GetService("Workspace")
 local environment =
 	Workspace:FindFirstChild("FrontendScene")
 
-local createdEnvironment = false
-
 if not environment then
+	-- Keep the container so artists can drop the real creation scene here,
+	-- but do not generate any visual placeholder. The previous bootstrap
+	-- created a dark Slate floor and changed Lighting, which appeared behind
+	-- the parchment HUD as an unwanted background.
 	local folder = Instance.new("Folder")
 	folder.Name = "FrontendScene"
 	folder.Parent = Workspace
-
 	environment = folder
-	createdEnvironment = true
 end
 
--- Only create the old placeholder environment if no environment existed.
-if createdEnvironment then
-	Lighting.ClockTime = 18.5
-	Lighting.Brightness = 1.2
-	Lighting.Ambient = Color3.fromRGB(42, 45, 54)
-	Lighting.OutdoorAmbient = Color3.fromRGB(27, 30, 38)
-
-	local floor = Instance.new("Part")
-	floor.Name = "Ground"
-	floor.Anchored = true
-	floor.Size = Vector3.new(180, 1, 180)
-	floor.Position = Vector3.new(0, -1, 0)
-	floor.Material = Enum.Material.Slate
-	floor.Color = Color3.fromRGB(19, 22, 28)
-	floor.Parent = environment
-end
+-- Character Creation does not own environment art or Lighting.
+-- The actual 3D scene is supplied separately in Workspace.FrontendScene.
 
 -- ============================================================
 -- PERSISTENT MARKERS
@@ -91,7 +76,7 @@ local function findLegacyMarker(
 ): BasePart?
 	local legacy =
 		environment:
-		FindFirstChild(name)
+			FindFirstChild(name)
 
 	if legacy
 		and legacy:IsA("BasePart") then
@@ -108,7 +93,7 @@ local function ensureMarker(
 ): BasePart
 	local existing =
 		markerModel:
-		FindFirstChild(name)
+			FindFirstChild(name)
 
 	if existing
 		and existing:IsA("BasePart") then
@@ -149,11 +134,11 @@ local cameraAnchor =
 	ensureMarker(
 		"CameraAnchor",
 		CFrame.new(0, 18, 34)
-		* CFrame.Angles(
-			math.rad(-10),
-			math.rad(180),
-			0
-		)
+			* CFrame.Angles(
+				math.rad(-10),
+				math.rad(180),
+				0
+			)
 	)
 
 ensureMarker(
@@ -168,7 +153,7 @@ local OLD_CREATION_SPAWN_POSITION = Vector3.new(3.3, 0, 0)
 local OLD_CREATION_FOCUS_POSITION = Vector3.new(-0.6, 3.7, 0)
 local CENTERED_CREATION_SPAWN_CFRAME =
 	CFrame.new(0, 0, 0)
-	* CFrame.Angles(0, math.rad(180), 0)
+		* CFrame.Angles(0, math.rad(180), 0)
 local CENTERED_CREATION_FOCUS_CFRAME = CFrame.new(0, 3.7, 0)
 
 local creationSpawn =
@@ -243,9 +228,9 @@ local function configurePlayerStreaming(
 		local streamOk, streamError =
 			pcall(function()
 				player:
-				RequestStreamAroundAsync(
-					streamingFocus.Position
-				)
+					RequestStreamAroundAsync(
+						streamingFocus.Position
+					)
 			end)
 
 		if not streamOk then
@@ -263,7 +248,7 @@ Players.PlayerAdded:
 
 for _, player in ipairs(
 	Players:GetPlayers()
-	) do
+) do
 	task.spawn(
 		configurePlayerStreaming,
 		player
