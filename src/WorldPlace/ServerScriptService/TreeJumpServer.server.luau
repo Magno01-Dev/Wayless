@@ -75,7 +75,7 @@ local SERVER_FINISH_BUFFER = 0.40
 
 local COMBAT_TAG_TREE_JUMP_COOLDOWN = 4.0
 
-local DEBUG = true
+local DEBUG = false
 
 local BRANCH_NAMES = {
 	Branch_EA = true,
