@@ -48,11 +48,11 @@ SlotSelectorHUDAssets.AssetIds = table.freeze({
 	trash = 114762963529028,
 
 	-- Pending: village icon IDs were not present in this upload batch.
-	village_leaf = 130205738487661,
-	village_sand = 117460391295418,
-	village_mist = 72698742788797,
-	village_stone = 94511934672233,
-	village_cloud = 78702295377565,
+	village_leaf = 112785958441829,
+	village_sand = 98738911782677,
+	village_mist = 72620934686655,
+	village_stone = 139337165117789,
+	village_cloud = 106631625933928,
 })
 
 local function toImage(assetId: number?): string
