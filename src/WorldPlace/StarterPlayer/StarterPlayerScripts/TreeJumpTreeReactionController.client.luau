@@ -56,7 +56,7 @@ local replicateEvent =
 -- ============================================================
 
 local DEBUG =
-	true
+	false
 
 local MAX_RENDER_DISTANCE =
 	230
@@ -972,8 +972,8 @@ local function animateLeaf(
 
 
 				local elapsed =
-				os.clock()
-				- startedAt
+					os.clock()
+					- startedAt
 
 
 				if elapsed >=
@@ -994,70 +994,70 @@ local function animateLeaf(
 
 
 				local normalized =
-				elapsed
-				/ lifetime
+					elapsed
+					/ lifetime
 
 
 				local ballistic =
-				startPosition
-				+ initialVelocity
-				* elapsed
-				+ Vector3.new(
-					0,
-					-0.5
-					* gravity
+					startPosition
+					+ initialVelocity
 					* elapsed
-					* elapsed,
-					0
-				)
+					+ Vector3.new(
+						0,
+						-0.5
+						* gravity
+						* elapsed
+						* elapsed,
+						0
+					)
 
 
 				local sway =
-				swayAxis
-				* math.sin(
-					elapsed
-					* swayFrequency
-					+ swayPhase
-				)
-				* swayAmplitude
+					swayAxis
+					* math.sin(
+						elapsed
+						* swayFrequency
+						+ swayPhase
+					)
+					* swayAmplitude
 
 
 				local position =
-				ballistic
-				+ sway
+					ballistic
+					+ sway
 
 
 				if normalized >
 					0.72 then
 
 					leaf.Transparency =
-					math.clamp(
-						(
-							normalized
-							- 0.72
+						math.clamp(
+							(
+								normalized
+								- 0.72
+							)
+							/ 0.28,
+							0,
+							1
 						)
-						/ 0.28,
-						0,
-						1
-					)
 				end
 
 
 				leaf.CFrame =
-				CFrame.new(
-					position
-				)
-				* CFrame.Angles(
-					initialRotation.X
-					+ rotX
-					* elapsed,
-					initialRotation.Y
-					+ rotY
-					* elapsed,
-					initialRotation.Z
-					+ rotZ
-					* elapsed
-				)
+					CFrame.new(
+						position
+					)
+					* CFrame.Angles(
+						initialRotation.X
+						+ rotX
+						* elapsed,
+						initialRotation.Y
+						+ rotY
+						* elapsed,
+						initialRotation.Z
+						+ rotZ
+						* elapsed
+					)
 			end
 		)
 
@@ -1151,8 +1151,8 @@ local function tweenPart(
 
 	local state =
 		activeSways[
-	part
-	]
+			part
+		]
 
 
 	if not state
@@ -1170,7 +1170,7 @@ local function tweenPart(
 			info,
 			{
 				CFrame =
-				target,
+					target,
 			}
 		)
 
@@ -1194,8 +1194,8 @@ local function swayFoliagePart(
 
 	local existing =
 		activeSways[
-	part
-	]
+			part
+		]
 
 
 	local baseCFrame =
@@ -1222,7 +1222,7 @@ local function swayFoliagePart(
 
 
 	activeSways[
-	part
+		part
 	] = {
 		baseCFrame =
 			baseCFrame,
@@ -1242,12 +1242,12 @@ local function swayFoliagePart(
 
 	local falloff =
 		1
-	- math.clamp(
-		distance
-			/ FOLIAGE_SEARCH_RADIUS,
-		0,
-		1
-	)
+		- math.clamp(
+			distance
+				/ FOLIAGE_SEARCH_RADIUS,
+			0,
+			1
+		)
 
 
 	local strength =
@@ -1364,8 +1364,8 @@ local function swayFoliagePart(
 
 			local state =
 				activeSways[
-			part
-			]
+					part
+				]
 
 
 			if not state
@@ -1400,8 +1400,8 @@ local function swayFoliagePart(
 
 			state =
 				activeSways[
-			part
-			]
+					part
+				]
 
 
 			if not state
@@ -1436,8 +1436,8 @@ local function swayFoliagePart(
 
 			state =
 				activeSways[
-			part
-			]
+					part
+				]
 
 
 			if state
@@ -1452,7 +1452,7 @@ local function swayFoliagePart(
 
 
 				activeSways[
-				part
+					part
 				] =
 					nil
 			end
@@ -1621,7 +1621,7 @@ local function reactToLanding(
 
 	local arrivalDirection =
 		landingPosition
-	- startPosition
+		- startPosition
 
 
 	if arrivalDirection.Magnitude >
@@ -1718,7 +1718,7 @@ local function reactToLanding(
 	if now
 		- (
 			lastTreeReactionAt[
-			tree
+				tree
 			]
 				or -math.huge
 		) <
@@ -1729,7 +1729,7 @@ local function reactToLanding(
 
 
 	lastTreeReactionAt[
-	tree
+		tree
 	] =
 		now
 
