@@ -617,7 +617,7 @@ local CURRENT_BRANCH_RAY_DISTANCE =
 -- =========================
 
 local DEBUG_TREE_JUMP =
-	true
+	false
 
 
 -- =========================
@@ -2538,7 +2538,7 @@ local function performLocalTreeJump(
 
 	-- =========================
 	-- TRAJECTORY DATA
-	-- =========================
+-- =========================
 
 	local startPosition =
 		rootPart.Position
@@ -3305,7 +3305,6 @@ UIS.InputBegan:Connect(
 
 
 			return
-
 		end
 
 
