@@ -617,7 +617,7 @@ local CURRENT_BRANCH_RAY_DISTANCE =
 -- =========================
 
 local DEBUG_TREE_JUMP =
-	true
+	false
 
 
 -- =========================

@@ -56,7 +56,7 @@ local replicateEvent =
 -- ============================================================
 
 local DEBUG =
-	true
+	false
 
 local MAX_RENDER_DISTANCE =
 	230
