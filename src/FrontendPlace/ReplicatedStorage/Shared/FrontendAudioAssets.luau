@@ -35,7 +35,7 @@ FrontendAudioAssets.Sounds = {
 		Volume = 0.16,
 	},
 	MenuMusic = {
-		Id = 0,
+		Id = 86855326915748,
 		Volume = 0.12,
 		Looped = true,
 	},
