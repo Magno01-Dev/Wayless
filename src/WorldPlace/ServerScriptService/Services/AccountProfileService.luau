@@ -1,7 +1,7 @@
 --!strict
 -- ServerScriptService > Services > AccountProfileService
 --
--- WAYLESS Account / Character Slot canonical profile v1.5 - Cross-place safe origin validation.
+-- WAYLESS Account / Character Slot canonical profile v1.6 - receipt-safe purchased slots.
 --
 -- PURPOSE
 --   Establishes the new canonical hierarchy:
@@ -425,6 +425,10 @@ local function makeDefaultProfile(player: Player): {[string]: any}
 
 		RedeemedCodes = {},
 
+		-- Server-only idempotency ledger for Developer Product receipts.
+		-- Stripped from client-facing snapshots by GetSnapshot().
+		ProcessedDeveloperProducts = {},
+
 		Slots = {
 			["1"] = makeBaseSlot(),
 		},
@@ -596,6 +600,19 @@ local function sanitizeProfile(player: Player, raw: any): {[string]: any}
 	profile.RedeemedCodes = typeof(raw.RedeemedCodes) == "table"
 		and deepClone(raw.RedeemedCodes)
 		or {}
+
+	profile.ProcessedDeveloperProducts = {}
+	if typeof(raw.ProcessedDeveloperProducts) == "table" then
+		for purchaseId, receipt in pairs(raw.ProcessedDeveloperProducts) do
+			if typeof(purchaseId) == "string" and purchaseId ~= "" then
+				if receipt == true then
+					profile.ProcessedDeveloperProducts[purchaseId] = true
+				elseif typeof(receipt) == "table" then
+					profile.ProcessedDeveloperProducts[purchaseId] = deepClone(receipt)
+				end
+			end
+		end
+	end
 
 	profile.QA = {
 		StudioNextSlotId = nil,
@@ -852,7 +869,10 @@ function AccountProfileService.GetSnapshot(player: Player): {[string]: any}?
 		return nil
 	end
 
-	return deepClone(state.Profile)
+	local snapshot = deepClone(state.Profile)
+	-- Purchase IDs are an internal server-side idempotency detail.
+	snapshot.ProcessedDeveloperProducts = nil
+	return snapshot
 end
 
 function AccountProfileService.GetSlot(player: Player, slotId: string): {[string]: any}?
@@ -1139,6 +1159,78 @@ function AccountProfileService.GrantPurchasedSlot(player: Player): (boolean, str
 		end
 
 		return true, "PurchasedSlotGranted"
+	end)
+
+	return ok, reason, grantedSlotId
+end
+
+-- Grants one purchased slot exactly once for a Roblox Developer Product receipt.
+-- The purchase ledger is stored in the SAME account profile write as the slot grant,
+-- eliminating the crash window that exists with a separate receipt DataStore.
+function AccountProfileService.GrantPurchasedSlotReceipt(
+	player: Player,
+	purchaseId: string,
+	productId: number
+): (boolean, string, string?)
+	if typeof(purchaseId) ~= "string" or purchaseId == "" then
+		return false, "InvalidPurchaseId", nil
+	end
+
+	if typeof(productId) ~= "number" or productId <= 0 then
+		return false, "InvalidProductId", nil
+	end
+
+	local grantedSlotId: string? = nil
+
+	local ok, reason = withMutationLock(player, function()
+		local state = states[player]
+		if not state or not state.Loaded or state.LoadFailed then
+			return false, "AccountProfileNotReady"
+		end
+
+		local profile = state.Profile
+		if typeof(profile.ProcessedDeveloperProducts) ~= "table" then
+			profile.ProcessedDeveloperProducts = {}
+		end
+
+		local existing = profile.ProcessedDeveloperProducts[purchaseId]
+		if existing ~= nil then
+			if typeof(existing) == "table" and existing.GrantedSlotId ~= nil then
+				grantedSlotId = tostring(existing.GrantedSlotId)
+			end
+			return true, "PurchaseAlreadyGranted"
+		end
+
+		local previousPurchasedCount = profile.Entitlements.PurchasedSlotCount
+		local previousNextSlotNumber = profile.NextSlotNumber
+
+		local slot = allocateSlot(
+			profile,
+			AccountProfileService.SlotUnlockSources.Purchase
+		)
+		grantedSlotId = slot.SlotId
+		profile.Entitlements.PurchasedSlotCount += 1
+		profile.ProcessedDeveloperProducts[purchaseId] = {
+			ProductId = productId,
+			GrantedSlotId = slot.SlotId,
+			GrantedAt = now(),
+		}
+
+		markDirty(player)
+
+		if not saveInternal(player, "GrantPurchasedSlotReceipt") then
+			-- UpdateAsync failed. Roll the in-memory mutation back so Roblox can
+			-- safely retry the same receipt without duplicating a slot.
+			profile.Slots[slot.SlotId] = nil
+			profile.NextSlotNumber = previousNextSlotNumber
+			profile.Entitlements.PurchasedSlotCount = previousPurchasedCount
+			profile.ProcessedDeveloperProducts[purchaseId] = nil
+			grantedSlotId = nil
+			markDirty(player)
+			return false, "PurchasedSlotReceiptSaveFailed"
+		end
+
+		return true, "PurchasedSlotReceiptGranted"
 	end)
 
 	return ok, reason, grantedSlotId
@@ -1548,7 +1640,7 @@ function AccountProfileService.Start()
 	end)
 
 	print(
-		"[AccountProfileService] READY v1.5"
+		"[AccountProfileService] READY v1.6"
 			.. " | CanonicalAccountSlots=ON"
 			.. " | CharacterIdentity=CharacterId+LifeId"
 			.. " | Store=" .. AccountProfileService.StoreName
