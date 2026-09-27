@@ -2538,7 +2538,7 @@ local function performLocalTreeJump(
 
 	-- =========================
 	-- TRAJECTORY DATA
--- =========================
+	-- =========================
 
 	local startPosition =
 		rootPart.Position
@@ -3305,6 +3305,7 @@ UIS.InputBegan:Connect(
 
 
 			return
+
 		end
 
 
