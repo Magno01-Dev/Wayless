@@ -162,7 +162,7 @@ end
 
 
 local DEBUG_HITBOX_VISUALS =
-	true
+	false
 
 local DEBUG_HITBOX_LIFETIME =
 	0.22
@@ -584,7 +584,7 @@ local M1_HIT_REACTION_FADE_IN = 0.02
 local M1_HIT_REACTION_FADE_OUT = 0.05
 
 
-local DEBUG_M1 = true
+local DEBUG_M1 = false
 
 print(
 	"[CombatServer] READY v24.19 WeaponProfiles+StatusCombatModifiers"

@@ -171,11 +171,11 @@ local PARTICLE_MOTION_SCALE =
 -- Prints the real class/contents of each template the first time it is used.
 -- Leave ON while diagnosing invisible assets, then set false.
 local PRODUCED_TEMPLATE_DEBUG =
-	true
+	false
 
 -- Keep these ON until the HitVFX pipeline is confirmed.
 local HIT_VFX_RUNTIME_DEBUG =
-	true
+	false
 
 -- One Heartbeat delay after parenting makes burst emission reliable for
 -- freshly-cloned Attachment/ParticleEmitter packs.

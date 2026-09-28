@@ -163,7 +163,7 @@ local LUNGE_BINDABLE_NAME =
 	"LungeTryStart"
 
 local DEBUG_LUNGE =
-	true
+	false
 
 
 -- =========================

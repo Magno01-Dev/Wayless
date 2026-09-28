@@ -285,7 +285,7 @@ local ANIMATION_FADE_OUT =
 	0.06
 
 local DEBUG =
-	true
+	false
 
 
 -- ============================================================

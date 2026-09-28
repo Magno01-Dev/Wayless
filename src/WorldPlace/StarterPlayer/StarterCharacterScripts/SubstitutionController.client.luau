@@ -73,7 +73,7 @@ local SUBSTITUTION_KEY =
 	Enum.KeyCode.X
 
 local DEBUG =
-	true
+	false
 
 -- =========================
 -- LOCAL-ONLY TEST INDICATOR
