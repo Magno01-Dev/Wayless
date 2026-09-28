@@ -122,7 +122,7 @@ local AERIAL_CONTACT_HOLD_FAILSAFE =
 
 
 local DEBUG =
-	true
+	false
 
 
 -- =========================

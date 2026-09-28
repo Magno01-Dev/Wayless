@@ -316,7 +316,7 @@ local AIR_HARD_TIMEOUT =
 
 
 local DEBUG =
-	true
+	false
 
 
 -- Authored Launcher/Uplift SFX.

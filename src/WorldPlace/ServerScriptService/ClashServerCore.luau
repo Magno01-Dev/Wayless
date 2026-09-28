@@ -228,7 +228,7 @@ local SINGLE_END_FALLBACK_DELAY =
 
 
 local DEBUG =
-	true
+	false
 
 
 -- =========================

@@ -129,7 +129,7 @@ local M1_END_RECOVERY_STEP_TIME = 0.025
 -- frame-authored root-motion curve. Small forward pressure still comes from
 -- performM1Lunge(), shared by all five M1s.
 
-local DEBUG_ATTACK = true
+local DEBUG_ATTACK = false
 
 
 -- =========================
