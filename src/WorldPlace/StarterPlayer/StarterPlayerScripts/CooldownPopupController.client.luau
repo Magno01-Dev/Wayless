@@ -1,50 +1,118 @@
 --!strict
--- CooldownPopupController v13 - CoreOnly Popup + Technique Hotbar Split
+-- CooldownPopupController v14 - Astra CooldownHUD integration
 --
 -- PLACE:
--- StarterPlayer > StarterPlayerScripts > CooldownPopupController
+-- StarterPlayer > StarterPlayerScripts > CooldownPopupController [LocalScript]
 --
--- PURPOSE:
--- Temporary cooldown popups for CORE mechanics using a skinned bar art.
--- This remains generic and source-driven via CoreCooldown_* attributes.
+-- VISUAL AUTHORITY:
+-- CooldownHUD.zip / Layout.json + INSTALL.md supplied by Magno.
+-- Do not retune layout, timing, colors, fonts, or animation values here.
 --
--- ART:
--- rbxassetid://120582051620258
--- ImageTransparency = 0.35
+-- BACKEND CONTRACT:
+-- Existing CoreCooldown_<ActionId>_{Label,StartsAt,EndsAt} character attributes.
+-- The HUD is presentation-only; gameplay/server systems remain authoritative.
 
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- ============================================================
+-- ASTRA ASSET IDS
+-- ============================================================
+-- AssetIds.json intentionally ships empty. Fill these only with the real
+-- owner/group uploads for the supplied PNGs. Do not reuse the old HUD skin.
+-- CloudEngraving should use the Roblox-ready 2.2x-brightness COPY produced
+-- from the supplied original, per INSTALL.md. The original stays preserved.
+local COOLDOWN_FRAME_IMAGE = ""
+local CLOUD_ENGRAVING_IMAGE = ""
+
+-- ============================================================
+-- ASTRA REFERENCE / LAYOUT CONSTANTS
+-- ============================================================
+local REFERENCE_WIDTH = 1920
+local REFERENCE_HEIGHT = 1080
+
+local RIGHT_OFFSET = 22
+local TOP_OFFSET = 410
+
+local ROW_WIDTH = 240
+local ROW_HEIGHT = 40
+local ROW_PITCH = 44
+
+local SURFACE_X = 10
+local SURFACE_Y = 8
+local SURFACE_WIDTH = 220
+local SURFACE_HEIGHT = 23
+local SURFACE_COLOR = Color3.fromRGB(0x12, 0x18, 0x19)
+local SURFACE_TRANSPARENCY = 1 - 0.48
+
+local CLOUD_TILE_WIDTH = 78
+local CLOUD_TILE_HEIGHT = 78
+local CLOUD_TRANSPARENCY = 1 - 0.45
+
+local NAME_X = 31
+local NAME_Y = 8
+local NAME_WIDTH = 139
+local NAME_HEIGHT = 18
+local NAME_TEXT_SIZE = 15
+local NAME_COLOR = Color3.fromRGB(0xE3, 0xD1, 0xAF)
+
+local TIMER_X = 177
+local TIMER_Y = 8
+local TIMER_WIDTH = 39
+local TIMER_HEIGHT = 18
+local TIMER_TEXT_SIZE = 14
+local TIMER_COLOR = Color3.fromRGB(0xF3, 0xE9, 0xD6)
+
+local PROGRESS_X = 35
+local PROGRESS_Y = 28
+local PROGRESS_WIDTH = 174
+local PROGRESS_HEIGHT = 2
+local PROGRESS_COLOR = Color3.fromRGB(0xC3, 0xA7, 0x77)
+local PROGRESS_TRANSPARENCY = 1 - 0.85
+
+local READY_COLOR = Color3.fromRGB(0xE9, 0xCE, 0xA0)
+local READY_DURATION = 1.0
+
+local ENTRY_DURATION = 0.28
+local ENTRY_FROM_X = 12
+local EXIT_DURATION = 0.28
+local EXIT_TRANSLATE_X = 18
+local REFLOW_DURATION = 0.28
+
+local TITLE_FONT = Font.new("rbxasset://fonts/families/Fondamento.json")
+local NUMBER_FONT = Font.new("rbxasset://fonts/families/Merriweather.json")
+
+local SURFACE_POLYGON: {{number}} = {
+	{1, 0},
+	{99, 0},
+	{100, 10},
+	{100, 90},
+	{99, 100},
+	{14, 100},
+	{9, 79},
+	{4, 70},
+	{0, 45},
+	{0, 10},
+}
+
+-- ============================================================
 -- TECHNIQUE COOLDOWN PRESENTATION SPLIT
 -- ============================================================
---
--- Techniques already have their own cooldown presentation in the
--- 10-slot TechniqueHotbarController. This popup remains reserved for
--- non-technique CORE mechanics such as Launcher, Lunge, AerialKick,
--- Substitution, etc.
---
--- We identify active techniques from the same authoritative replicated
--- TechniqueLoadoutSlot_1 ... TechniqueLoadoutSlot_10 attributes.
+-- Techniques already render their cooldowns in TechniqueHotbarController.
+-- This HUD remains for non-technique/core actions only.
 local TECHNIQUE_SLOT_COUNT = 10
 
 local function isTechniqueLoadoutAbility(abilityId: string): boolean
 	for slotIndex = 1, TECHNIQUE_SLOT_COUNT do
-		local techniqueId =
-			player:GetAttribute(
-				"TechniqueLoadoutSlot_"
-				.. tostring(slotIndex)
-			)
-
+		local techniqueId = player:GetAttribute("TechniqueLoadoutSlot_" .. tostring(slotIndex))
 		if typeof(techniqueId) == "string"
 			and techniqueId ~= ""
 			and techniqueId == abilityId then
-
 			return true
 		end
 	end
@@ -53,92 +121,35 @@ local function isTechniqueLoadoutAbility(abilityId: string): boolean
 end
 
 -- ============================================================
--- VISUAL / LAYOUT
--- ============================================================
-
-local RIGHT_MARGIN = 10
-local BASE_Y_SCALE = 0.50
-
--- Larger than v4 so the art reads clearly.
-local POPUP_WIDTH = 252
-local POPUP_HEIGHT = 66
-local POPUP_GAP = 8
-
-local ENTRY_FROM_BELOW = 16
-local EXIT_RISE = 18
-
-local ENTRY_TIME = 0.16
-local EXIT_TIME = 0.16
-local REFLOW_TIME = 0.18
-
--- When cooldown reaches zero, keep 0.0 visible in gold briefly,
--- then remove. We no longer show the word READY.
-local ZERO_HOLD_TIME = 0.75
-local UPDATE_INTERVAL = 0.035
-
-local SKIN_IMAGE = "rbxassetid://124946606271089"
-local SKIN_TRANSPARENCY = 0.35
-
--- Transparent-border trim without editing the uploaded asset:
--- render the skin slightly oversized inside the popup canvas.
-local SKIN_OVERSCALE_X = 1.03
-local SKIN_OVERSCALE_Y = 1.05
-
--- Artwork-aligned regions.
--- Long left bar body.
-local TITLE_POS = UDim2.fromScale(0.165, 0.455)
-local TITLE_SIZE = UDim2.fromScale(0.49, 0.18)
-
--- Right square cap.
-local TIMER_BASE_POSITION = UDim2.fromScale(0.822, 0.455)
-local TIMER_SIZE = UDim2.fromScale(0.13, 0.20)
-
--- Progress bar intentionally disabled in v9.
-local PROGRESS_POS = UDim2.fromScale(0.085, 0.665)
-local PROGRESS_SIZE = UDim2.fromScale(0, 0)
-
--- ============================================================
--- PALETTE
--- ============================================================
-
-local COLOR_TEXT = Color3.fromRGB(238, 234, 224)
-local COLOR_TIMER = Color3.fromRGB(196, 48, 39)
-local COLOR_ZERO = Color3.fromRGB(220, 177, 76)
-local COLOR_TRACK = Color3.fromRGB(40, 37, 33)
-local COLOR_FILL = Color3.fromRGB(220, 177, 76)
-
--- ============================================================
 -- TYPES
 -- ============================================================
-
-type PopupRecord = {
+type CooldownRecord = {
 	id: string,
 	label: string,
 	duration: number,
-	endsAt: number,
-	canvas: CanvasGroup,
-	skin: ImageLabel,
-	title: TextLabel,
-	timer: TextLabel,
-	progressTrack: Frame,
-	progressFill: Frame,
+	expiresAt: number,
+	row: CanvasGroup,
+	nameLabel: TextLabel,
+	nameShadow: TextLabel,
+	timerLabel: TextLabel,
+	timerShadow: TextLabel,
+	progress: Frame,
 	layoutTween: Tween?,
+	entryTween: Tween?,
+	fadeTween: Tween?,
 	removing: boolean,
-	inReadyState: boolean,
+	ready: boolean,
 	readyUntil: number,
-	statusTransitionToken: number,
-	timerTween: Tween?,
-	generation: number,
 }
 
 -- ============================================================
--- GUI ROOT
+-- CLEAN OLD GUI NAMES / CREATE FIXED PACKAGE GUI
 -- ============================================================
-
 for _, oldName in ipairs({
+	"CooldownHUD",
 	"CooldownHUDGui",
 	"CooldownPopupGui",
-	}) do
+}) do
 	local old = playerGui:FindFirstChild(oldName)
 	if old then
 		old:Destroy()
@@ -146,317 +157,581 @@ for _, oldName in ipairs({
 end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "CooldownPopupGui"
+screenGui.Name = "CooldownHUD"
 screenGui.ResetOnSpawn = false
-screenGui.IgnoreGuiInset = true
-screenGui.DisplayOrder = 91
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.IgnoreGuiInset = false
+screenGui.DisplayOrder = 91
 screenGui.Parent = playerGui
 
-local root = Instance.new("Frame")
-root.Name = "CooldownPopupRoot"
-root.Size = UDim2.fromScale(1, 1)
-root.BackgroundTransparency = 1
-root.Parent = screenGui
+-- This frame gives us the actual drawable/safe coordinate space produced by
+-- IgnoreGuiInset=false. Edge placement is anchored against this real space.
+local safeBounds = Instance.new("Frame")
+safeBounds.Name = "SafeBounds"
+safeBounds.Size = UDim2.fromScale(1, 1)
+safeBounds.BackgroundTransparency = 1
+safeBounds.BorderSizePixel = 0
+safeBounds.Parent = screenGui
+
+local clipRoot = Instance.new("Frame")
+clipRoot.Name = "CooldownListClip"
+clipRoot.AnchorPoint = Vector2.new(1, 0)
+clipRoot.BackgroundTransparency = 1
+clipRoot.BorderSizePixel = 0
+clipRoot.ClipsDescendants = true
+clipRoot.Parent = safeBounds
+
+local scaleContainer = Instance.new("Frame")
+scaleContainer.Name = "ScaleContainer"
+scaleContainer.BackgroundTransparency = 1
+scaleContainer.BorderSizePixel = 0
+scaleContainer.Position = UDim2.fromOffset(0, 0)
+scaleContainer.Parent = clipRoot
+
+local uiScale = Instance.new("UIScale")
+uiScale.Name = "ReferenceUIScale"
+uiScale.Scale = 1
+uiScale.Parent = scaleContainer
+
+local scrollingList = Instance.new("ScrollingFrame")
+scrollingList.Name = "CooldownList"
+scrollingList.Position = UDim2.fromOffset(0, 0)
+scrollingList.BackgroundTransparency = 1
+scrollingList.BorderSizePixel = 0
+scrollingList.ClipsDescendants = true
+scrollingList.CanvasSize = UDim2.fromOffset(ROW_WIDTH, 0)
+scrollingList.CanvasPosition = Vector2.zero
+scrollingList.ScrollBarThickness = 0
+scrollingList.ScrollingDirection = Enum.ScrollingDirection.Y
+scrollingList.ScrollingEnabled = true
+scrollingList.ElasticBehavior = Enum.ElasticBehavior.Never
+scrollingList.Parent = scaleContainer
 
 -- ============================================================
 -- STATE
 -- ============================================================
-
-local activeOrder: {PopupRecord} = {}
-local byId: {[string]: PopupRecord} = {}
-local nextGeneration = 0
+local activeOrder: {CooldownRecord} = {}
+local byId: {[string]: CooldownRecord} = {}
 local characterConnections: {RBXScriptConnection} = {}
+local globalConnections: {RBXScriptConnection} = {}
+local ryoConnections: {RBXScriptConnection} = {}
 local currentCharacter: Model? = nil
+local currentScale = 1
 
 -- ============================================================
--- HELPERS
+-- LAYOUT / SAFE-AREA HELPERS
 -- ============================================================
+local function cancelTween(tween: Tween?)
+	if tween then
+		tween:Cancel()
+	end
+end
 
-local function addCorner(parent: Instance, radius: number)
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, radius)
-	corner.Parent = parent
+local function getReferenceScale(): number
+	local camera = Workspace.CurrentCamera
+	if not camera then
+		return 1
+	end
+
+	local viewport = camera.ViewportSize
+	if viewport.X <= 0 or viewport.Y <= 0 then
+		return 1
+	end
+
+	return math.min(
+		viewport.X / REFERENCE_WIDTH,
+		viewport.Y / REFERENCE_HEIGHT
+	)
+end
+
+local function getRyoTopAbsoluteY(): number?
+	local ryoGui = playerGui:FindFirstChild("RyoHUD")
+	if not ryoGui then
+		return nil
+	end
+
+	local container = ryoGui:FindFirstChild("Container")
+	if not container or not container:IsA("GuiObject") then
+		return nil
+	end
+
+	return container.AbsolutePosition.Y
+end
+
+local function updateListCanvasSize()
+	local totalHeight = 0
+	if #activeOrder > 0 then
+		totalHeight = ((#activeOrder - 1) * ROW_PITCH) + ROW_HEIGHT
+	end
+
+	scrollingList.CanvasSize = UDim2.fromOffset(ROW_WIDTH, totalHeight)
+end
+
+local function updateScaleAndBounds()
+	currentScale = getReferenceScale()
+	uiScale.Scale = currentScale
+
+	local safeAbsoluteTop = safeBounds.AbsolutePosition.Y
+	local safeAbsoluteBottom = safeAbsoluteTop + safeBounds.AbsoluteSize.Y
+	local clipBottom = safeAbsoluteBottom
+
+	local ryoTop = getRyoTopAbsoluteY()
+	if ryoTop then
+		clipBottom = math.min(clipBottom, ryoTop)
+	end
+
+	local rootTop = safeAbsoluteTop + (TOP_OFFSET * currentScale)
+	local availableHeightPixels = math.max(0, clipBottom - rootTop)
+	local availableHeightReference = if currentScale > 0
+		then availableHeightPixels / currentScale
+		else 0
+
+	clipRoot.Position = UDim2.new(1, -(RIGHT_OFFSET * currentScale), 0, TOP_OFFSET * currentScale)
+	clipRoot.Size = UDim2.fromOffset(ROW_WIDTH * currentScale, availableHeightPixels)
+
+	scaleContainer.Size = UDim2.fromOffset(ROW_WIDTH, availableHeightReference)
+	scrollingList.Size = UDim2.fromOffset(ROW_WIDTH, availableHeightReference)
+end
+
+local function clearRyoConnections()
+	for _, connection in ipairs(ryoConnections) do
+		connection:Disconnect()
+	end
+	table.clear(ryoConnections)
+end
+
+local function bindRyoBounds()
+	clearRyoConnections()
+
+	local ryoGui = playerGui:FindFirstChild("RyoHUD")
+	if not ryoGui then
+		updateScaleAndBounds()
+		return
+	end
+
+	local container = ryoGui:FindFirstChild("Container")
+	if container and container:IsA("GuiObject") then
+		table.insert(ryoConnections, container:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateScaleAndBounds))
+		table.insert(ryoConnections, container:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateScaleAndBounds))
+	end
+
+	updateScaleAndBounds()
+end
+
+-- ============================================================
+-- ASTRA POLYGON RASTERIZATION
+-- ============================================================
+local function polygonSpanAtPercent(yPercent: number): (number, number)
+	local intersections: {number} = {}
+	local pointCount = #SURFACE_POLYGON
+
+	for index = 1, pointCount do
+		local a = SURFACE_POLYGON[index]
+		local b = SURFACE_POLYGON[(index % pointCount) + 1]
+		local ax = a[1]
+		local ay = a[2]
+		local bx = b[1]
+		local by = b[2]
+
+		if ay ~= by then
+			local lowY = math.min(ay, by)
+			local highY = math.max(ay, by)
+
+			-- Half-open edge test avoids double-counting polygon vertices.
+			if yPercent >= lowY and yPercent < highY then
+				local t = (yPercent - ay) / (by - ay)
+				table.insert(intersections, ax + ((bx - ax) * t))
+			end
+		end
+	end
+
+	table.sort(intersections)
+	if #intersections < 2 then
+		return 0, 0
+	end
+
+	return intersections[1], intersections[#intersections]
+end
+
+local function createSurface(row: CanvasGroup)
+	for pixelY = 0, SURFACE_HEIGHT - 1 do
+		local yPercent = ((pixelY + 0.5) / SURFACE_HEIGHT) * 100
+		local minPercent, maxPercent = polygonSpanAtPercent(yPercent)
+
+		if maxPercent > minPercent then
+			local localX = (minPercent / 100) * SURFACE_WIDTH
+			local localWidth = ((maxPercent - minPercent) / 100) * SURFACE_WIDTH
+
+			local stripe = Instance.new("Frame")
+			stripe.Name = "SurfaceRow_" .. tostring(pixelY + 1)
+			stripe.Position = UDim2.fromOffset(SURFACE_X + localX, SURFACE_Y + pixelY)
+			stripe.Size = UDim2.fromOffset(localWidth, 1)
+			stripe.BackgroundColor3 = SURFACE_COLOR
+			stripe.BackgroundTransparency = SURFACE_TRANSPARENCY
+			stripe.BorderSizePixel = 0
+			stripe.ClipsDescendants = true
+			stripe.ZIndex = 1
+			stripe.Parent = row
+
+			local clouds = Instance.new("ImageLabel")
+			clouds.Name = "Clouds"
+			clouds.Position = UDim2.fromOffset(-localX, -pixelY)
+			clouds.Size = UDim2.fromOffset(SURFACE_WIDTH, SURFACE_HEIGHT)
+			clouds.BackgroundTransparency = 1
+			clouds.Image = CLOUD_ENGRAVING_IMAGE
+			clouds.ImageTransparency = CLOUD_TRANSPARENCY
+			clouds.ScaleType = Enum.ScaleType.Tile
+			clouds.TileSize = UDim2.fromOffset(CLOUD_TILE_WIDTH, CLOUD_TILE_HEIGHT)
+			clouds.ZIndex = 2
+			clouds.Parent = stripe
+		end
+	end
+end
+
+-- ============================================================
+-- TEXT HELPERS
+-- ============================================================
+local function createTextPair(
+	parent: Instance,
+	name: string,
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	fontFace: Font,
+	textSize: number,
+	color: Color3,
+	alignment: Enum.TextXAlignment
+): (TextLabel, TextLabel)
+	local shadow = Instance.new("TextLabel")
+	shadow.Name = name .. "Shadow"
+	shadow.Position = UDim2.fromOffset(x, y + 1)
+	shadow.Size = UDim2.fromOffset(width, height)
+	shadow.BackgroundTransparency = 1
+	shadow.BorderSizePixel = 0
+	shadow.FontFace = fontFace
+	shadow.TextSize = textSize
+	shadow.TextScaled = false
+	shadow.TextWrapped = false
+	shadow.TextColor3 = Color3.new(0, 0, 0)
+	shadow.TextXAlignment = alignment
+	shadow.TextYAlignment = Enum.TextYAlignment.Center
+	shadow.TextTruncate = Enum.TextTruncate.AtEnd
+	shadow.ZIndex = 4
+	shadow.Parent = parent
+
+	local label = Instance.new("TextLabel")
+	label.Name = name
+	label.Position = UDim2.fromOffset(x, y)
+	label.Size = UDim2.fromOffset(width, height)
+	label.BackgroundTransparency = 1
+	label.BorderSizePixel = 0
+	label.FontFace = fontFace
+	label.TextSize = textSize
+	label.TextScaled = false
+	label.TextWrapped = false
+	label.TextColor3 = color
+	label.TextXAlignment = alignment
+	label.TextYAlignment = Enum.TextYAlignment.Center
+	label.TextTruncate = Enum.TextTruncate.AtEnd
+	label.ZIndex = 4
+	label.Parent = parent
+
+	return label, shadow
+end
+
+local function setTextPair(label: TextLabel, shadow: TextLabel, text: string)
+	label.Text = text
+	shadow.Text = text
+end
+
+local function setTimerFont(record: CooldownRecord, fontFace: Font)
+	record.timerLabel.FontFace = fontFace
+	record.timerShadow.FontFace = fontFace
+end
+
+-- ============================================================
+-- ROW CREATION
+-- ============================================================
+local function createCooldownRow(actionId: string, displayName: string): CooldownRecord
+	local row = Instance.new("CanvasGroup")
+	row.Name = actionId .. "Cooldown"
+	row.Size = UDim2.fromOffset(ROW_WIDTH, ROW_HEIGHT)
+	row.BackgroundTransparency = 1
+	row.BorderSizePixel = 0
+	row.ClipsDescendants = true
+	row.GroupTransparency = 1
+	row.ZIndex = 1
+	row.Parent = scrollingList
+
+	createSurface(row)
+
+	local frame = Instance.new("ImageLabel")
+	frame.Name = "Frame"
+	frame.Position = UDim2.fromOffset(0, 0)
+	frame.Size = UDim2.fromOffset(ROW_WIDTH, ROW_HEIGHT)
+	frame.BackgroundTransparency = 1
+	frame.BorderSizePixel = 0
+	frame.Image = COOLDOWN_FRAME_IMAGE
+	frame.ImageTransparency = 0
+	frame.ScaleType = Enum.ScaleType.Stretch
+	frame.ZIndex = 3
+	frame.Parent = row
+
+	local nameLabel, nameShadow = createTextPair(
+		row,
+		"Name",
+		NAME_X,
+		NAME_Y,
+		NAME_WIDTH,
+		NAME_HEIGHT,
+		TITLE_FONT,
+		NAME_TEXT_SIZE,
+		NAME_COLOR,
+		Enum.TextXAlignment.Left
+	)
+	setTextPair(nameLabel, nameShadow, displayName)
+
+	local timerLabel, timerShadow = createTextPair(
+		row,
+		"Timer",
+		TIMER_X,
+		TIMER_Y,
+		TIMER_WIDTH,
+		TIMER_HEIGHT,
+		NUMBER_FONT,
+		TIMER_TEXT_SIZE,
+		TIMER_COLOR,
+		Enum.TextXAlignment.Right
+	)
+	setTextPair(timerLabel, timerShadow, "")
+
+	local progress = Instance.new("Frame")
+	progress.Name = "Progress"
+	progress.Position = UDim2.fromOffset(PROGRESS_X, PROGRESS_Y)
+	progress.Size = UDim2.fromOffset(PROGRESS_WIDTH, PROGRESS_HEIGHT)
+	progress.BackgroundColor3 = PROGRESS_COLOR
+	progress.BackgroundTransparency = PROGRESS_TRANSPARENCY
+	progress.BorderSizePixel = 0
+	progress.ZIndex = 4
+	progress.Parent = row
+
+	return {
+		id = actionId,
+		label = displayName,
+		duration = 1,
+		expiresAt = 0,
+		row = row,
+		nameLabel = nameLabel,
+		nameShadow = nameShadow,
+		timerLabel = timerLabel,
+		timerShadow = timerShadow,
+		progress = progress,
+		layoutTween = nil,
+		entryTween = nil,
+		fadeTween = nil,
+		removing = false,
+		ready = false,
+		readyUntil = 0,
+	}
+end
+
+-- ============================================================
+-- ORDER / ANIMATION
+-- ============================================================
+local function indexOf(record: CooldownRecord): number?
+	for index, item in ipairs(activeOrder) do
+		if item == record then
+			return index
+		end
+	end
+	return nil
 end
 
 local function targetPositionForIndex(index: number): UDim2
-	local yOffset = (index - 1) * (POPUP_HEIGHT + POPUP_GAP)
-	return UDim2.new(1, -RIGHT_MARGIN, BASE_Y_SCALE, yOffset)
+	return UDim2.fromOffset(0, (index - 1) * ROW_PITCH)
 end
 
-local function formatRemaining(remaining: number): string
-	if remaining >= 10 then
-		return string.format("%.0f", remaining)
-	end
-	return string.format("%.1f", math.max(0, remaining))
-end
+local function reflow(skipRecord: CooldownRecord?)
+	updateListCanvasSize()
 
-local function cancelLayoutTween(record: PopupRecord)
-	if record.layoutTween then
-		record.layoutTween:Cancel()
-		record.layoutTween = nil
-	end
-end
-
-local function reflow()
 	for index, record in ipairs(activeOrder) do
-		if record.removing or not record.canvas.Parent then
+		if record == skipRecord then
 			continue
 		end
 
-		cancelLayoutTween(record)
+		if record.removing or not record.row.Parent then
+			continue
+		end
+
+		cancelTween(record.layoutTween)
 		record.layoutTween = TweenService:Create(
-			record.canvas,
-			TweenInfo.new(REFLOW_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-			{ Position = targetPositionForIndex(index) }
+			record.row,
+			TweenInfo.new(REFLOW_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{Position = targetPositionForIndex(index)}
 		)
 		record.layoutTween:Play()
 	end
 end
 
-local function createPopupVisual(id: string, label: string): PopupRecord
-	nextGeneration += 1
-	local generation = nextGeneration
-
-	local canvas = Instance.new("CanvasGroup")
-	canvas.Name = id .. "Cooldown"
-	canvas.AnchorPoint = Vector2.new(1, 0.5)
-	canvas.Size = UDim2.fromOffset(POPUP_WIDTH, POPUP_HEIGHT)
-	canvas.BackgroundTransparency = 1
-	canvas.GroupTransparency = 1
-	canvas.ZIndex = 50
-	canvas.Parent = root
-
-	local skin = Instance.new("ImageLabel")
-	skin.Name = "Skin"
-	skin.AnchorPoint = Vector2.new(0.5, 0.5)
-	skin.Position = UDim2.fromScale(0.5, 0.5)
-	skin.BackgroundTransparency = 1
-	skin.Size = UDim2.fromScale(
-		SKIN_OVERSCALE_X,
-		SKIN_OVERSCALE_Y
-	)
-	skin.Image = SKIN_IMAGE
-	skin.ImageTransparency = SKIN_TRANSPARENCY
-	skin.ScaleType = Enum.ScaleType.Fit
-	skin.ZIndex = 51
-	skin.Parent = canvas
-
-	local title = Instance.new("TextLabel")
-	title.Name = "AbilityName"
-	title.AnchorPoint = Vector2.new(0, 0.5)
-	title.Position = TITLE_POS
-	title.Size = TITLE_SIZE
-	title.BackgroundTransparency = 1
-	title.Text = label
-	title.TextColor3 = COLOR_TEXT
-	title.TextStrokeColor3 = Color3.new(0, 0, 0)
-	title.TextStrokeTransparency = 0.70
-	title.Font = Enum.Font.GothamSemibold
-	title.TextScaled = false
-	title.TextWrapped = false
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.TextYAlignment = Enum.TextYAlignment.Center
-	title.TextTruncate = Enum.TextTruncate.AtEnd
-	title.ZIndex = 53
-	title.Parent = skin
-
-	local titleConstraint = Instance.new("UITextSizeConstraint")
-	titleConstraint.MinTextSize = 12
-	titleConstraint.MaxTextSize = 12
-	titleConstraint.Parent = title
-
-	local timer = Instance.new("TextLabel")
-	timer.Name = "Timer"
-	timer.AnchorPoint = Vector2.new(0.5, 0.5)
-	timer.Position = TIMER_BASE_POSITION
-	timer.Size = TIMER_SIZE
-	timer.BackgroundTransparency = 1
-	timer.Text = "0.0"
-	timer.TextColor3 = COLOR_TIMER
-	timer.TextStrokeColor3 = Color3.new(0, 0, 0)
-	timer.TextStrokeTransparency = 0.34
-	timer.Font = Enum.Font.GothamBold
-	timer.TextScaled = false
-	timer.TextXAlignment = Enum.TextXAlignment.Center
-	timer.TextYAlignment = Enum.TextYAlignment.Center
-	timer.ZIndex = 54
-	timer.Parent = skin
-
-	local timerConstraint = Instance.new("UITextSizeConstraint")
-	timerConstraint.MinTextSize = 14
-	timerConstraint.MaxTextSize = 14
-	timerConstraint.Parent = timer
-
-	local progressTrack = Instance.new("Frame")
-	progressTrack.Name = "ProgressTrack"
-	progressTrack.AnchorPoint = Vector2.new(0, 0)
-	progressTrack.Position = PROGRESS_POS
-	progressTrack.Size = PROGRESS_SIZE
-	progressTrack.BackgroundTransparency = 1
-	progressTrack.BorderSizePixel = 0
-	progressTrack.Visible = false
-	progressTrack.ZIndex = 52
-	progressTrack.Parent = skin
-
-	local progressFill = Instance.new("Frame")
-	progressFill.Name = "Progress"
-	progressFill.Size = UDim2.fromScale(0, 1)
-	progressFill.BackgroundTransparency = 1
-	progressFill.BorderSizePixel = 0
-	progressFill.Visible = false
-	progressFill.ZIndex = 53
-	progressFill.Parent = progressTrack
-
-	return {
-		id = id,
-		label = label,
-		duration = 1,
-		endsAt = 0,
-		canvas = canvas,
-		skin = skin,
-		title = title,
-		timer = timer,
-		progressTrack = progressTrack,
-		progressFill = progressFill,
-		layoutTween = nil,
-		removing = false,
-		inReadyState = false,
-		readyUntil = 0,
-		statusTransitionToken = 0,
-		timerTween = nil,
-		generation = generation,
-	}
-end
-
-local function cancelTimerTween(record: PopupRecord)
-	if record.timerTween then
-		record.timerTween:Cancel()
-		record.timerTween = nil
-	end
-end
-
-local function removeFromOrder(record: PopupRecord)
-	for index, item in ipairs(activeOrder) do
-		if item == record then
-			table.remove(activeOrder, index)
-			return
-		end
-	end
-end
-
-local function beginRemove(record: PopupRecord)
+local function beginRemove(record: CooldownRecord)
 	if record.removing then
 		return
 	end
 
 	record.removing = true
-	record.statusTransitionToken += 1
-	cancelTimerTween(record)
-
 	if byId[record.id] == record then
 		byId[record.id] = nil
 	end
 
-	removeFromOrder(record)
-	reflow()
-	cancelLayoutTween(record)
+	local orderIndex = indexOf(record)
+	if orderIndex then
+		table.remove(activeOrder, orderIndex)
+	end
 
+	cancelTween(record.layoutTween)
+	cancelTween(record.entryTween)
+	cancelTween(record.fadeTween)
+
+	local currentPosition = record.row.Position
 	local exitTarget = UDim2.new(
-		record.canvas.Position.X.Scale,
-		record.canvas.Position.X.Offset,
-		record.canvas.Position.Y.Scale,
-		record.canvas.Position.Y.Offset - EXIT_RISE
+		currentPosition.X.Scale,
+		currentPosition.X.Offset + EXIT_TRANSLATE_X,
+		currentPosition.Y.Scale,
+		currentPosition.Y.Offset
 	)
 
-	local positionTween = TweenService:Create(
-		record.canvas,
-		TweenInfo.new(EXIT_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-		{ Position = exitTarget }
+	record.layoutTween = TweenService:Create(
+		record.row,
+		TweenInfo.new(EXIT_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{Position = exitTarget}
+	)
+	record.fadeTween = TweenService:Create(
+		record.row,
+		TweenInfo.new(EXIT_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{GroupTransparency = 1}
 	)
 
-	local fadeTween = TweenService:Create(
-		record.canvas,
-		TweenInfo.new(EXIT_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-		{ GroupTransparency = 1 }
-	)
+	record.layoutTween:Play()
+	record.fadeTween:Play()
+	reflow()
 
-	positionTween:Play()
-	fadeTween:Play()
-
-	fadeTween.Completed:Once(function()
-		if record.canvas.Parent then
-			record.canvas:Destroy()
+	record.fadeTween.Completed:Once(function()
+		if record.row.Parent then
+			record.row:Destroy()
 		end
 	end)
 end
 
-local function showCooldown(id: string, label: string, duration: number, endsAt: number?)
-	if typeof(id) ~= "string"
-		or id == ""
-		or typeof(label) ~= "string"
-		or label == ""
-		or typeof(duration) ~= "number"
-		or duration <= 0
-		or duration ~= duration then
-		return
+local function removeImmediate(record: CooldownRecord)
+	if byId[record.id] == record then
+		byId[record.id] = nil
 	end
 
-	local now = Workspace:GetServerTimeNow()
-	local finalEndsAt = if typeof(endsAt) == "number" and endsAt > now then endsAt else now + duration
-
-	local existing = byId[id]
-	if existing and not existing.removing and existing.canvas.Parent then
-		existing.label = label
-		existing.title.Text = label
-		existing.duration = duration
-		existing.endsAt = finalEndsAt
-		existing.inReadyState = false
-		existing.readyUntil = 0
-		existing.statusTransitionToken += 1
-		cancelTimerTween(existing)
-		existing.timer.TextColor3 = COLOR_TIMER
-		existing.timer.TextTransparency = 0
-		existing.timer.TextStrokeTransparency = 0.34
-		existing.timer.Position = TIMER_BASE_POSITION
-		existing.progressFill.BackgroundColor3 = COLOR_FILL
-		return
+	local orderIndex = indexOf(record)
+	if orderIndex then
+		table.remove(activeOrder, orderIndex)
 	end
 
-	local record = createPopupVisual(id, label)
-	record.duration = duration
-	record.endsAt = finalEndsAt
+	cancelTween(record.layoutTween)
+	cancelTween(record.entryTween)
+	cancelTween(record.fadeTween)
 
-	byId[id] = record
-	table.insert(activeOrder, record)
-
-	local targetIndex = #activeOrder
-	local target = targetPositionForIndex(targetIndex)
-
-	record.canvas.Position = UDim2.new(target.X.Scale, target.X.Offset, target.Y.Scale, target.Y.Offset + ENTRY_FROM_BELOW)
-	record.canvas.GroupTransparency = 1
-
-	local positionTween = TweenService:Create(
-		record.canvas,
-		TweenInfo.new(ENTRY_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-		{ Position = target }
-	)
-
-	local fadeTween = TweenService:Create(
-		record.canvas,
-		TweenInfo.new(ENTRY_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		{ GroupTransparency = 0 }
-	)
-
-	record.layoutTween = positionTween
-	positionTween:Play()
-	fadeTween:Play()
+	if record.row.Parent then
+		record.row:Destroy()
+	end
 end
 
 -- ============================================================
--- GENERIC CORE COOLDOWN CONTRACT
+-- ASTRA API
 -- ============================================================
+local function StartCooldown(
+	actionId: string,
+	displayName: string,
+	durationSeconds: number,
+	expiresAt: number
+)
+	if actionId == ""
+		or displayName == ""
+		or durationSeconds <= 0
+		or durationSeconds ~= durationSeconds then
+		return
+	end
 
+	local serverNow = Workspace:GetServerTimeNow()
+	local resolvedExpiresAt = if expiresAt > serverNow
+		then expiresAt
+		else serverNow + durationSeconds
+
+	local existing = byId[actionId]
+	if existing and not existing.removing and existing.row.Parent then
+		existing.label = displayName
+		existing.duration = durationSeconds
+		existing.expiresAt = resolvedExpiresAt
+		existing.ready = false
+		existing.readyUntil = 0
+		existing.progress.Visible = true
+		existing.timerLabel.TextColor3 = TIMER_COLOR
+		setTimerFont(existing, NUMBER_FONT)
+		setTextPair(existing.nameLabel, existing.nameShadow, displayName)
+		return
+	end
+
+	local record = createCooldownRow(actionId, displayName)
+	record.duration = durationSeconds
+	record.expiresAt = resolvedExpiresAt
+
+	byId[actionId] = record
+	table.insert(activeOrder, 1, record)
+
+	local target = targetPositionForIndex(1)
+	record.row.Position = UDim2.fromOffset(ENTRY_FROM_X, target.Y.Offset)
+	record.row.GroupTransparency = 1
+
+	record.entryTween = TweenService:Create(
+		record.row,
+		TweenInfo.new(ENTRY_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{Position = target}
+	)
+	record.fadeTween = TweenService:Create(
+		record.row,
+		TweenInfo.new(ENTRY_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{GroupTransparency = 0}
+	)
+
+	updateListCanvasSize()
+	reflow(record)
+	record.entryTween:Play()
+	record.fadeTween:Play()
+end
+
+local function RemoveCooldown(actionId: string)
+	local record = byId[actionId]
+	if record then
+		beginRemove(record)
+	end
+end
+
+local function Clear()
+	local snapshot = table.clone(activeOrder)
+	for _, record in ipairs(snapshot) do
+		beginRemove(record)
+	end
+end
+
+local function clearImmediate()
+	local snapshot = table.clone(activeOrder)
+	for _, record in ipairs(snapshot) do
+		removeImmediate(record)
+	end
+	table.clear(activeOrder)
+	table.clear(byId)
+	updateListCanvasSize()
+end
+
+-- ============================================================
+-- GENERIC CORE COOLDOWN BACKEND ADAPTER
+-- ============================================================
 local CORE_PREFIX = "CoreCooldown_"
 local ENDS_SUFFIX = "_EndsAt"
 local STARTS_SUFFIX = "_StartsAt"
@@ -474,6 +749,7 @@ local function getAbilityIdFromEndsAttribute(attributeName: string): string?
 	if abilityId == "" then
 		return nil
 	end
+
 	return abilityId
 end
 
@@ -482,8 +758,8 @@ local function defaultLabelFromId(abilityId: string): string
 end
 
 local function syncCoreCooldown(abilityId: string)
-	-- Jutsu/technique cooldowns belong exclusively to the 10-slot hotbar.
 	if isTechniqueLoadoutAbility(abilityId) then
+		RemoveCooldown(abilityId)
 		return
 	end
 
@@ -492,9 +768,9 @@ local function syncCoreCooldown(abilityId: string)
 		return
 	end
 
-	local now = Workspace:GetServerTimeNow()
+	local serverNow = Workspace:GetServerTimeNow()
 	local endsAt = character:GetAttribute(CORE_PREFIX .. abilityId .. ENDS_SUFFIX)
-	if typeof(endsAt) ~= "number" or endsAt <= now then
+	if typeof(endsAt) ~= "number" or endsAt <= serverNow then
 		return
 	end
 
@@ -503,7 +779,7 @@ local function syncCoreCooldown(abilityId: string)
 	if typeof(startsAt) == "number" and startsAt < endsAt then
 		duration = endsAt - startsAt
 	else
-		duration = math.max(endsAt - now, 0.001)
+		duration = math.max(endsAt - serverNow, 0.001)
 	end
 
 	local label = character:GetAttribute(CORE_PREFIX .. abilityId .. LABEL_SUFFIX)
@@ -511,7 +787,7 @@ local function syncCoreCooldown(abilityId: string)
 		label = defaultLabelFromId(abilityId)
 	end
 
-	showCooldown(abilityId, label, duration, endsAt)
+	StartCooldown(abilityId, label, duration, endsAt)
 end
 
 local function syncAllCoreCooldowns()
@@ -531,7 +807,6 @@ end
 -- ============================================================
 -- CHARACTER BINDING
 -- ============================================================
-
 local function clearCharacterConnections()
 	for _, connection in ipairs(characterConnections) do
 		connection:Disconnect()
@@ -541,150 +816,160 @@ end
 
 local function bindCharacter(character: Model)
 	clearCharacterConnections()
+	clearImmediate()
 	currentCharacter = character
 
-	table.insert(
-		characterConnections,
-		character.AttributeChanged:Connect(function(attributeName: string)
-			local abilityId = getAbilityIdFromEndsAttribute(attributeName)
-			if abilityId then
-				syncCoreCooldown(abilityId)
-			end
-		end)
-	)
+	table.insert(characterConnections, character.AttributeChanged:Connect(function(attributeName: string)
+		local abilityId = getAbilityIdFromEndsAttribute(attributeName)
+		if abilityId then
+			syncCoreCooldown(abilityId)
+		end
+	end))
 
 	task.defer(syncAllCoreCooldowns)
 end
 
-player.CharacterAdded:Connect(bindCharacter)
-player.CharacterRemoving:Connect(function(character: Model)
+table.insert(globalConnections, player.CharacterAdded:Connect(bindCharacter))
+table.insert(globalConnections, player.CharacterRemoving:Connect(function(character: Model)
 	if currentCharacter == character then
 		clearCharacterConnections()
 		currentCharacter = nil
+		clearImmediate()
 	end
-end)
+end))
 
 if player.Character then
 	bindCharacter(player.Character)
 end
 
--- If a technique is moved into the loadout while a generic popup with the
--- same Id already exists, remove that row immediately. This keeps the
--- presentation contract correct even without restarting the client.
+-- If a core action is moved into the technique hotbar while its generic row is
+-- visible, remove it so the two cooldown presentations never duplicate.
 for slotIndex = 1, TECHNIQUE_SLOT_COUNT do
-	local attributeName =
-		"TechniqueLoadoutSlot_"
-		.. tostring(slotIndex)
-
-	player:
-		GetAttributeChangedSignal(
-			attributeName
-		):
-		Connect(function()
-			local techniqueId =
-			player:GetAttribute(
-				attributeName
-			)
-
-			if typeof(techniqueId) ~= "string"
-				or techniqueId == "" then
-
-				return
-			end
-
-			local existing =
-			byId[techniqueId]
-
-			if existing
-				and not existing.removing then
-
-				beginRemove(
-					existing
-				)
-			end
-		end)
+	local attributeName = "TechniqueLoadoutSlot_" .. tostring(slotIndex)
+	table.insert(globalConnections, player:GetAttributeChangedSignal(attributeName):Connect(function()
+		local techniqueId = player:GetAttribute(attributeName)
+		if typeof(techniqueId) == "string" and techniqueId ~= "" then
+			RemoveCooldown(techniqueId)
+		end
+	end))
 end
 
 -- ============================================================
--- TIMER UPDATE / REMOVAL
+-- TIME / READY STATE
 -- ============================================================
-
-local accumulator = 0
-
-RunService.RenderStepped:Connect(function(deltaTime: number)
-	accumulator += deltaTime
-	if accumulator < UPDATE_INTERVAL then
-		return
-	end
-	accumulator = 0
-
-	local now = Workspace:GetServerTimeNow()
+table.insert(globalConnections, RunService.RenderStepped:Connect(function()
+	local serverNow = Workspace:GetServerTimeNow()
 	local snapshot = table.clone(activeOrder)
 
 	for _, record in ipairs(snapshot) do
-		if record.removing or not record.canvas.Parent then
+		if record.removing or not record.row.Parent then
 			continue
 		end
 
-		local remaining = record.endsAt - now
+		local remaining = math.max(0, record.expiresAt - serverNow)
 
 		if remaining <= 0 then
-			if not record.inReadyState then
-				record.inReadyState = true
-				record.readyUntil = now + ZERO_HOLD_TIME
-				record.statusTransitionToken += 1
-				cancelTimerTween(record)
-
-				record.timer.Text = "0.0"
-				record.timer.TextColor3 = COLOR_ZERO
-				record.timer.TextTransparency = 0
-				record.timer.TextStrokeTransparency = 0.34
-				record.timer.Position = TIMER_BASE_POSITION
-
-				record.progressFill.Size = UDim2.fromScale(0, 1)
-				record.progressFill.BackgroundColor3 = COLOR_FILL
-			elseif now >= record.readyUntil then
+			if not record.ready then
+				record.ready = true
+				record.readyUntil = serverNow + READY_DURATION
+				record.progress.Visible = false
+				record.timerLabel.TextColor3 = READY_COLOR
+				setTimerFont(record, TITLE_FONT)
+				setTextPair(record.timerLabel, record.timerShadow, "Ready")
+			elseif serverNow >= record.readyUntil then
 				beginRemove(record)
 			end
 
 			continue
 		end
 
-		if record.inReadyState then
-			record.statusTransitionToken += 1
-			cancelTimerTween(record)
+		if record.ready then
+			-- A same-ID refresh during Ready immediately restores active state.
+			record.ready = false
+			record.readyUntil = 0
+			record.progress.Visible = true
+			record.timerLabel.TextColor3 = TIMER_COLOR
+			setTimerFont(record, NUMBER_FONT)
 		end
 
-		record.inReadyState = false
-		record.readyUntil = 0
-		record.timer.TextColor3 = COLOR_TIMER
-		record.timer.TextTransparency = 0
-		record.timer.TextStrokeTransparency = 0.34
-		record.timer.Position = TIMER_BASE_POSITION
-		record.timer.Text = formatRemaining(remaining)
+		local secondsText = tostring(math.ceil(remaining)) .. "s"
+		setTextPair(record.timerLabel, record.timerShadow, secondsText)
 
 		local ratio = math.clamp(remaining / math.max(record.duration, 0.001), 0, 1)
-		record.progressFill.Size = UDim2.fromScale(ratio, 1)
+		record.progress.Size = UDim2.fromOffset(PROGRESS_WIDTH * ratio, PROGRESS_HEIGHT)
 	end
+end))
+
+-- ============================================================
+-- SAFE-AREA / MONEY-HUD BINDING
+-- ============================================================
+table.insert(globalConnections, safeBounds:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateScaleAndBounds))
+table.insert(globalConnections, safeBounds:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateScaleAndBounds))
+table.insert(globalConnections, Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(updateScaleAndBounds))
+
+table.insert(globalConnections, playerGui.ChildAdded:Connect(function(child: Instance)
+	if child.Name == "RyoHUD" then
+		task.defer(bindRyoBounds)
+	end
+end))
+
+table.insert(globalConnections, playerGui.ChildRemoved:Connect(function(child: Instance)
+	if child.Name == "RyoHUD" then
+		clearRyoConnections()
+		task.defer(updateScaleAndBounds)
+	end
+end))
+
+local camera = Workspace.CurrentCamera
+if camera then
+	table.insert(globalConnections, camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScaleAndBounds))
+end
+
+bindRyoBounds()
+task.defer(updateScaleAndBounds)
+
+-- ============================================================
+-- ASSET-ID GUARD
+-- ============================================================
+if COOLDOWN_FRAME_IMAGE == "" or CLOUD_ENGRAVING_IMAGE == "" then
+	warn(
+		"[CooldownHUD] Astra layout installed, but AssetIds are still empty. "
+			.. "Upload CooldownFrame.png and the Roblox-ready CloudEngraving 2.2x brightness copy, "
+			.. "then set their real rbxassetid:// values in CooldownPopupController."
+	)
+end
+
+script.Destroying:Connect(function()
+	clearCharacterConnections()
+	clearRyoConnections()
+
+	for _, connection in ipairs(globalConnections) do
+		connection:Disconnect()
+	end
+	table.clear(globalConnections)
+
+	clearImmediate()
 end)
 
 print(
-	"[CooldownPopup] READY v13 CoreOnlyTechniqueSplit"
-		.. " | generic CoreCooldown_* contract"
-		.. " | Skin=124946606271089"
-		.. " | Transparency=35%"
-		.. " | LargerBar=OFF"
-		.. " | SmallerBar=ON"
-		.. " | NoProgressBar=ON"
-		.. " | ReadyText=OFF"
-		.. " | ZeroHoldGold=ON"
-		.. " | titleAligned=SHIFTED_RIGHT_A_LOT"
-		.. " | timerAligned=ORIGINAL_X_HIGHER_Y"
-		.. " | TechniqueCooldownPopup=OFF"
-		.. " | TechniqueCooldownHotbar=ON"
-		.. " | CoreMechanicPopup=ON"
-		.. " | fixedTextSize=ON"
-		.. " | transparentBorderTrim=ON"
-		.. " | skinOverscale=1.03x1.05"
-		.. " | right stack"
+	"[CooldownHUD] READY v14 AstraSpec"
+		.. " | CoreCooldown backend"
+		.. " | 240x40 rows"
+		.. " | newestTop=ON"
+		.. " | Ready1s=ON"
+		.. " | safeArea=ON"
+		.. " | ryoClip=ON"
+		.. " | assetIds="
+		.. ((COOLDOWN_FRAME_IMAGE ~= "" and CLOUD_ENGRAVING_IMAGE ~= "") and "READY" or "PENDING")
 )
+
+-- Keep the exact API names present in this controller for future local adapters.
+-- Existing gameplay systems currently enter through CoreCooldown_* attributes.
+local _apiKeepalive = {
+	StartCooldown = StartCooldown,
+	RemoveCooldown = RemoveCooldown,
+	Clear = Clear,
+}
+if false then
+	print(_apiKeepalive)
+end
