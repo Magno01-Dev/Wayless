@@ -15,10 +15,8 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 local ATTRIBUTE_NAME = "Ryo"
 
--- Intentionally empty until the processed Astra assets are uploaded by the
--- experience owner/group and their real Roblox Image Asset IDs are supplied.
-local MONEY_FRAME_IMAGE = ""
-local CLOUD_ENGRAVING_IMAGE = ""
+local MONEY_FRAME_IMAGE = "rbxassetid://89344263943061"
+local CLOUD_ENGRAVING_IMAGE = "rbxassetid://70710879501168"
 
 local REFERENCE_WIDTH = 1920
 local REFERENCE_HEIGHT = 1080
