@@ -31,33 +31,11 @@ local noticeRemote = remotesFolder:WaitForChild(names.SquadNotice) :: RemoteEven
 local view = SquadView.new(SquadConfig, playerGui)
 
 -- Honor Roblox reduced-motion preference when the client exposes it.
--- SquadView reads animation timings from its per-instance config, so reduced
--- motion swaps only those timings/offsets to zero without changing layout.
+-- Layout and state remain unchanged; only motion transitions are suppressed.
 local reducedMotionConnection: RBXScriptConnection? = nil
-local normalViewConfig = view.Config
-local reducedAnimation = table.clone(SquadConfig.Animation)
-for _, key in ipairs({
-	"PanelEnter",
-	"PanelExit",
-	"PanelEnterOffsetY",
-	"PanelExitOffsetY",
-	"HUDRowEnter",
-	"HUDRowRemove",
-	"HUDRowReflow",
-	"HealthTween",
-	"NoticeEnter",
-	"NoticeExit",
-}) do
-	reducedAnimation[key] = 0
-end
-local reducedViewConfig = {}
-for key, value in pairs(SquadConfig) do
-	reducedViewConfig[key] = value
-end
-reducedViewConfig.Animation = reducedAnimation
 
 local function setReducedMotion(enabled: boolean)
-	view.Config = if enabled then reducedViewConfig else normalViewConfig
+	view:SetReducedMotion(enabled)
 end
 
 do
