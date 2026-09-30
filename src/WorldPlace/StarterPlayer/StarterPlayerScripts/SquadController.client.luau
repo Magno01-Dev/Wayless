@@ -36,12 +36,24 @@ local view = SquadView.new(SquadConfig, playerGui)
 local reducedMotionConnection: RBXScriptConnection? = nil
 local normalViewConfig = view.Config
 local reducedAnimation = table.clone(SquadConfig.Animation)
-for key, value in pairs(reducedAnimation) do
-	if typeof(value) == "number" then
-		reducedAnimation[key] = 0
-	end
+for _, key in ipairs({
+	"PanelEnter",
+	"PanelExit",
+	"PanelEnterOffsetY",
+	"PanelExitOffsetY",
+	"HUDRowEnter",
+	"HUDRowRemove",
+	"HUDRowReflow",
+	"HealthTween",
+	"NoticeEnter",
+	"NoticeExit",
+}) do
+	reducedAnimation[key] = 0
 end
-local reducedViewConfig = table.clone(SquadConfig)
+local reducedViewConfig = {}
+for key, value in pairs(SquadConfig) do
+	reducedViewConfig[key] = value
+end
 reducedViewConfig.Animation = reducedAnimation
 
 local function setReducedMotion(enabled: boolean)
