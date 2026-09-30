@@ -12,7 +12,6 @@ local shared = ReplicatedStorage:WaitForChild("Shared")
 local SquadConfig = require(shared:WaitForChild("SquadConfig"))
 
 local SquadService = {}
-
 local started = false
 
 export type MemberRecord = {
@@ -38,23 +37,18 @@ export type InvitationRecord = {
 	Status: string,
 }
 
-type ConnectionBundle = {
-	CharacterAdded: RBXScriptConnection?,
-	IdentityChanged: RBXScriptConnection?,
-	HealthChanged: RBXScriptConnection?,
-	MaxHealthChanged: RBXScriptConnection?,
-	CharacterAncestry: RBXScriptConnection?,
-	HumanoidChildAdded: RBXScriptConnection?,
+type MemberConnections = {
+	General: {RBXScriptConnection},
+	Character: {RBXScriptConnection},
 }
 
 local squadsById: {[string]: SquadRecord} = {}
 local squadIdByUserId: {[number]: string} = {}
 local invitationsById: {[string]: InvitationRecord} = {}
-local memberConnections: {[number]: ConnectionBundle} = {}
+local memberConnections: {[number]: MemberConnections} = {}
 local lastInviteRequestAt: {[number]: number} = {}
 local publishQueued: {[string]: boolean} = {}
 
-local remotesFolder: Folder
 local inviteRemote: RemoteEvent
 local respondRemote: RemoteEvent
 local removeRemote: RemoteEvent
@@ -117,12 +111,10 @@ local function getHealth(player: Player): (number, number)
 	if not character then
 		return 0, 0
 	end
-
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then
 		return 0, 0
 	end
-
 	return math.max(0, humanoid.Health), math.max(0, humanoid.MaxHealth)
 end
 
@@ -133,7 +125,9 @@ local function sendNotice(player: Player?, text: string)
 end
 
 local function sendEmptySnapshot(player: Player)
-	snapshotRemote:FireClient(player, nil, nil, {})
+	if player.Parent == Players then
+		snapshotRemote:FireClient(player, nil, nil, {})
+	end
 end
 
 local function buildMembersSnapshot(squad: SquadRecord): {{[string]: any}}
@@ -147,12 +141,11 @@ local function buildMembersSnapshot(squad: SquadRecord): {{[string]: any}}
 
 	local result = {}
 	for _, member in ipairs(ordered) do
-		local player = member.Player
-		local health, maxHealth = getHealth(player)
+		local health, maxHealth = getHealth(member.Player)
 		table.insert(result, {
 			UserId = member.UserId,
-			characterName = getCharacterName(player),
-			username = player.Name,
+			characterName = getCharacterName(member.Player),
+			username = member.Player.Name,
 			identityKey = member.IdentityKey,
 			health = health,
 			maxHealth = maxHealth,
@@ -165,12 +158,10 @@ local function publishSnapshot(squad: SquadRecord)
 	if squadsById[squad.Id] ~= squad then
 		return
 	end
-
-	local members = buildMembersSnapshot(squad)
+	local payload = buildMembersSnapshot(squad)
 	for _, member in pairs(squad.Members) do
-		local player = member.Player
-		if player.Parent == Players then
-			snapshotRemote:FireClient(player, squad.Id, squad.LeaderUserId, members)
+		if member.Player.Parent == Players then
+			snapshotRemote:FireClient(member.Player, squad.Id, squad.LeaderUserId, payload)
 		end
 	end
 end
@@ -180,7 +171,6 @@ local function schedulePublish(squad: SquadRecord)
 		return
 	end
 	publishQueued[squad.Id] = true
-
 	task.delay(SquadConfig.SnapshotHealthThrottleSeconds, function()
 		publishQueued[squad.Id] = nil
 		if squadsById[squad.Id] == squad then
@@ -189,111 +179,99 @@ local function schedulePublish(squad: SquadRecord)
 	end)
 end
 
-local function disconnectBundle(userId: number)
+local function disconnectList(list: {RBXScriptConnection})
+	for _, connection in ipairs(list) do
+		if connection.Connected then
+			connection:Disconnect()
+		end
+	end
+	table.clear(list)
+end
+
+local function disconnectMember(userId: number)
 	local bundle = memberConnections[userId]
 	if not bundle then
 		return
 	end
-
-	for _, connection in pairs(bundle :: any) do
-		if typeof(connection) == "RBXScriptConnection" then
-			connection:Disconnect()
-		end
-	end
+	disconnectList(bundle.General)
+	disconnectList(bundle.Character)
 	memberConnections[userId] = nil
 end
 
-local function bindHumanoidSignals(player: Player, squad: SquadRecord, bundle: ConnectionBundle)
-	if bundle.HealthChanged then
-		bundle.HealthChanged:Disconnect()
-		bundle.HealthChanged = nil
-	end
-	if bundle.MaxHealthChanged then
-		bundle.MaxHealthChanged:Disconnect()
-		bundle.MaxHealthChanged = nil
-	end
-	if bundle.CharacterAncestry then
-		bundle.CharacterAncestry:Disconnect()
-		bundle.CharacterAncestry = nil
-	end
-	if bundle.HumanoidChildAdded then
-		bundle.HumanoidChildAdded:Disconnect()
-		bundle.HumanoidChildAdded = nil
-	end
+local function bindCharacter(player: Player, squad: SquadRecord, bundle: MemberConnections, character: Model)
+	disconnectList(bundle.Character)
 
-	local character = player.Character
-	if not character then
-		schedulePublish(squad)
-		return
+	local function bindHumanoid(humanoid: Humanoid)
+		table.insert(bundle.Character, humanoid.HealthChanged:Connect(function()
+			if getSquadForUserId(player.UserId) == squad then
+				schedulePublish(squad)
+			end
+		end))
+		table.insert(bundle.Character, humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(function()
+			if getSquadForUserId(player.UserId) == squad then
+				schedulePublish(squad)
+			end
+		end))
 	end
 
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
-		bundle.HumanoidChildAdded = character.ChildAdded:Connect(function(child)
-			if child:IsA("Humanoid") and getSquadForUserId(player.UserId) == squad then
-				bindHumanoidSignals(player, squad, bundle)
-			end
-		end)
-	end
-
 	if humanoid then
-		bundle.HealthChanged = humanoid.HealthChanged:Connect(function()
-			if getSquadForUserId(player.UserId) == squad then
+		bindHumanoid(humanoid)
+	else
+		table.insert(bundle.Character, character.ChildAdded:Connect(function(child)
+			if child:IsA("Humanoid") and getSquadForUserId(player.UserId) == squad then
+				bindHumanoid(child)
 				schedulePublish(squad)
 			end
-		end)
-		bundle.MaxHealthChanged = humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(function()
-			if getSquadForUserId(player.UserId) == squad then
-				schedulePublish(squad)
-			end
-		end)
+		end))
 	end
 
-	bundle.CharacterAncestry = character.AncestryChanged:Connect(function(_, parent)
+	table.insert(bundle.Character, character.AncestryChanged:Connect(function(_, parent)
 		if parent == nil and getSquadForUserId(player.UserId) == squad then
 			schedulePublish(squad)
 		end
-	end)
+	end))
 
 	schedulePublish(squad)
 end
 
 local function bindMember(player: Player, squad: SquadRecord)
-	disconnectBundle(player.UserId)
-
-	local bundle: ConnectionBundle = {}
+	disconnectMember(player.UserId)
+	local bundle: MemberConnections = {
+		General = {},
+		Character = {},
+	}
 	memberConnections[player.UserId] = bundle
 
-	bundle.CharacterAdded = player.CharacterAdded:Connect(function()
-		if getSquadForUserId(player.UserId) ~= squad then
-			return
+	table.insert(bundle.General, player.CharacterAdded:Connect(function(character)
+		if getSquadForUserId(player.UserId) == squad then
+			bindCharacter(player, squad, bundle, character)
 		end
-		task.defer(function()
-			if getSquadForUserId(player.UserId) == squad then
-				bindHumanoidSignals(player, squad, bundle)
-			end
-		end)
-	end)
+	end))
 
-	bundle.IdentityChanged = player:GetAttributeChangedSignal("ShinobiDisplayName"):Connect(function()
+	table.insert(bundle.General, player:GetAttributeChangedSignal("ShinobiDisplayName"):Connect(function()
 		if getSquadForUserId(player.UserId) == squad then
 			schedulePublish(squad)
 		end
-	end)
+	end))
 
-	bindHumanoidSignals(player, squad, bundle)
+	if player.Character then
+		bindCharacter(player, squad, bundle, player.Character)
+	else
+		schedulePublish(squad)
+	end
 end
 
-local function getUsedIdentityKeys(squad: SquadRecord): {[string]: boolean}
-	local used = {}
+local function usedIdentities(squad: SquadRecord): {[string]: boolean}
+	local used: {[string]: boolean} = {}
 	for _, member in pairs(squad.Members) do
 		used[member.IdentityKey] = true
 	end
 	return used
 end
 
-local function chooseIdentityKey(squad: SquadRecord): string?
-	local used = getUsedIdentityKeys(squad)
+local function chooseIdentity(squad: SquadRecord): string?
+	local used = usedIdentities(squad)
 	for _, identity in ipairs(SquadConfig.Identities) do
 		if not used[identity.Key] then
 			return identity.Key
@@ -306,14 +284,14 @@ local function addMember(squad: SquadRecord, player: Player): boolean
 	if squad.Members[player.UserId] then
 		return true
 	end
-	if countMembers(squad) >= SquadConfig.MaxMembers then
-		return false
-	end
 	if squadIdByUserId[player.UserId] ~= nil then
 		return false
 	end
+	if countMembers(squad) >= SquadConfig.MaxMembers then
+		return false
+	end
 
-	local identityKey = chooseIdentityKey(squad)
+	local identityKey = chooseIdentity(squad)
 	if not identityKey then
 		return false
 	end
@@ -339,10 +317,9 @@ local function createSquad(leader: Player): SquadRecord
 		NextJoinOrder = 1,
 	}
 	squadsById[squad.Id] = squad
-
-	local added = addMember(squad, leader)
-	if not added then
-		error("[SquadService] Failed to add leader to newly created squad")
+	if not addMember(squad, leader) then
+		squadsById[squad.Id] = nil
+		error("[SquadService] Failed to add leader to new squad")
 	end
 	return squad
 end
@@ -352,7 +329,6 @@ local function setInvitationStatus(invitation: InvitationRecord, status: string)
 		return
 	end
 	invitation.Status = status
-
 	local sender = getPlayer(invitation.SenderUserId)
 	local target = getPlayer(invitation.TargetUserId)
 	if sender then
@@ -384,27 +360,13 @@ local function cancelInvalidInvitationsForSquad(squad: SquadRecord)
 	local full = countMembers(squad) >= SquadConfig.MaxMembers
 	for _, invitation in pairs(invitationsById) do
 		if invitation.Status == "pending" and invitation.SquadId == squad.Id then
-			local targetInSquad = squadIdByUserId[invitation.TargetUserId] ~= nil
+			local targetAlreadyGrouped = squadIdByUserId[invitation.TargetUserId] ~= nil
 			local senderStillLeader = invitation.SenderUserId == squad.LeaderUserId
-			if full or targetInSquad or not senderStillLeader then
+			if full or targetAlreadyGrouped or not senderStillLeader then
 				setInvitationStatus(invitation, "cancelled")
 			end
 		end
 	end
-end
-
-local function disbandSquad(squad: SquadRecord)
-	cancelInvitationsForSquad(squad.Id)
-	for userId, member in pairs(squad.Members) do
-		squadIdByUserId[userId] = nil
-		disconnectBundle(userId)
-		if member.Player.Parent == Players then
-			sendEmptySnapshot(member.Player)
-		end
-	end
-	squad.Members = {}
-	squadsById[squad.Id] = nil
-	publishQueued[squad.Id] = nil
 end
 
 local function chooseSuccessor(squad: SquadRecord): number?
@@ -419,6 +381,18 @@ local function chooseSuccessor(squad: SquadRecord): number?
 	return bestUserId
 end
 
+local function disbandSquad(squad: SquadRecord)
+	cancelInvitationsForSquad(squad.Id)
+	for userId, member in pairs(squad.Members) do
+		squadIdByUserId[userId] = nil
+		disconnectMember(userId)
+		sendEmptySnapshot(member.Player)
+	end
+	table.clear(squad.Members)
+	squadsById[squad.Id] = nil
+	publishQueued[squad.Id] = nil
+end
+
 local function removeMemberInternal(squad: SquadRecord, userId: number): Player?
 	local member = squad.Members[userId]
 	if not member then
@@ -427,12 +401,9 @@ local function removeMemberInternal(squad: SquadRecord, userId: number): Player?
 
 	squad.Members[userId] = nil
 	squadIdByUserId[userId] = nil
-	disconnectBundle(userId)
+	disconnectMember(userId)
 	cancelInvitationsForUser(userId)
-
-	if member.Player.Parent == Players then
-		sendEmptySnapshot(member.Player)
-	end
+	sendEmptySnapshot(member.Player)
 
 	if countMembers(squad) == 0 then
 		disbandSquad(squad)
@@ -451,16 +422,15 @@ local function removeMemberInternal(squad: SquadRecord, userId: number): Player?
 	return member.Player
 end
 
-local function isIntegerUserId(value: any): boolean
-	return typeof(value) == "number"
-		and value > 0
-		and value % 1 == 0
+local function validUserId(value: any): boolean
+	return typeof(value) == "number" and value > 0 and value % 1 == 0
 end
 
-local function onInvite(sender: Player, targetUserId: any)
-	if not isIntegerUserId(targetUserId) then
+local function onInvite(sender: Player, rawTargetUserId: any)
+	if not validUserId(rawTargetUserId) then
 		return
 	end
+	local targetUserId = rawTargetUserId :: number
 	if targetUserId == sender.UserId then
 		sendNotice(sender, "You cannot invite yourself.")
 		return
@@ -494,8 +464,7 @@ local function onInvite(sender: Player, targetUserId: any)
 			return
 		end
 	else
-		-- Astra contract: the first valid invitation while solo atomically
-		-- creates the squad, with the sender as leader.
+		-- Astra contract: first valid invitation while solo creates the squad.
 		squad = createSquad(sender)
 		publishSnapshot(squad)
 	end
@@ -530,10 +499,7 @@ local function onRespond(target: Player, invitationId: any, accept: any)
 	end
 
 	local invitation = invitationsById[invitationId]
-	if not invitation or invitation.Status ~= "pending" then
-		return
-	end
-	if invitation.TargetUserId ~= target.UserId then
+	if not invitation or invitation.Status ~= "pending" or invitation.TargetUserId ~= target.UserId then
 		return
 	end
 
@@ -566,19 +532,20 @@ local function onRespond(target: Player, invitationId: any, accept: any)
 		sendNotice(target, "That squad invitation is no longer valid.")
 		return
 	end
-
 	if countMembers(squad) >= SquadConfig.MaxMembers then
 		setInvitationStatus(invitation, "cancelled")
 		sendNotice(target, "That squad is already full.")
 		return
 	end
-
 	if not addMember(squad, target) then
 		setInvitationStatus(invitation, "cancelled")
 		return
 	end
 
 	setInvitationStatus(invitation, "accepted")
+	-- Membership invalidates any other pending incoming/outgoing invitations for
+	-- the joining player. The accepted invitation is already final and is kept.
+	cancelInvitationsForUser(target.UserId)
 	cancelInvalidInvitationsForSquad(squad)
 	publishSnapshot(squad)
 
@@ -589,8 +556,12 @@ local function onRespond(target: Player, invitationId: any, accept: any)
 	end
 end
 
-local function onRemove(requester: Player, targetUserId: any)
-	if not isIntegerUserId(targetUserId) or targetUserId == requester.UserId then
+local function onRemove(requester: Player, rawTargetUserId: any)
+	if not validUserId(rawTargetUserId) then
+		return
+	end
+	local targetUserId = rawTargetUserId :: number
+	if targetUserId == requester.UserId then
 		return
 	end
 
@@ -599,16 +570,15 @@ local function onRemove(requester: Player, targetUserId: any)
 		sendNotice(requester, "Only the squad leader can remove members.")
 		return
 	end
-
 	local member = squad.Members[targetUserId]
 	if not member then
 		return
 	end
 
 	local removedName = getCharacterName(member.Player)
-	local removedPlayer = removeMemberInternal(squad, targetUserId)
-	if removedPlayer then
-		sendNotice(removedPlayer, "You were removed from the squad.")
+	local removed = removeMemberInternal(squad, targetUserId)
+	if removed then
+		sendNotice(removed, "You were removed from the squad.")
 	end
 	if squadsById[squad.Id] == squad then
 		for _, remaining in pairs(squad.Members) do
@@ -617,7 +587,7 @@ local function onRemove(requester: Player, targetUserId: any)
 	end
 end
 
-local function onLeave(player: Player, disconnected: boolean?)
+local function onLeave(player: Player, disconnected: boolean)
 	local squad = getSquadForUserId(player.UserId)
 	if not squad then
 		return
@@ -632,10 +602,12 @@ local function onLeave(player: Player, disconnected: boolean?)
 	end
 
 	if squadsById[squad.Id] == squad then
-		local successor = if wasLeader then getPlayer(squad.LeaderUserId) else nil
 		local message = leavingName .. " left the squad."
-		if successor then
-			message ..= " " .. getCharacterName(successor) .. " is now the leader."
+		if wasLeader then
+			local successor = getPlayer(squad.LeaderUserId)
+			if successor then
+				message ..= " " .. getCharacterName(successor) .. " is now the leader."
+			end
 		end
 		for _, remaining in pairs(squad.Members) do
 			sendNotice(remaining.Player, message)
@@ -666,10 +638,8 @@ local function expireInvitations()
 	for invitationId, invitation in pairs(invitationsById) do
 		if invitation.Status == "pending" and invitation.ExpiresAt <= now then
 			setInvitationStatus(invitation, "expired")
-			local sender = getPlayer(invitation.SenderUserId)
-			local target = getPlayer(invitation.TargetUserId)
-			sendNotice(sender, "Invitation expired.")
-			sendNotice(target, "Invitation expired.")
+			sendNotice(getPlayer(invitation.SenderUserId), "Invitation expired.")
+			sendNotice(getPlayer(invitation.TargetUserId), "Invitation expired.")
 		elseif invitation.Status ~= "pending" and invitation.ExpiresAt + 60 <= now then
 			invitationsById[invitationId] = nil
 		end
@@ -683,32 +653,29 @@ function SquadService.Start()
 	started = true
 
 	local folderName = SquadConfig.RemotesFolderName
-	local existingFolder = ReplicatedStorage:FindFirstChild(folderName)
-	if existingFolder then
-		if existingFolder:IsA("Folder") then
-			remotesFolder = existingFolder
-		else
-			existingFolder:Destroy()
-			remotesFolder = Instance.new("Folder")
-			remotesFolder.Name = folderName
-			remotesFolder.Parent = ReplicatedStorage
-		end
+	local existing = ReplicatedStorage:FindFirstChild(folderName)
+	local folder: Folder
+	if existing and existing:IsA("Folder") then
+		folder = existing
 	else
-		remotesFolder = Instance.new("Folder")
-		remotesFolder.Name = folderName
-		remotesFolder.Parent = ReplicatedStorage
+		if existing then
+			existing:Destroy()
+		end
+		folder = Instance.new("Folder")
+		folder.Name = folderName
+		folder.Parent = ReplicatedStorage
 	end
 
 	local names = SquadConfig.RemoteNames
-	inviteRemote = getOrCreateRemoteEvent(remotesFolder, names.Invite)
-	respondRemote = getOrCreateRemoteEvent(remotesFolder, names.Respond)
-	removeRemote = getOrCreateRemoteEvent(remotesFolder, names.Remove)
-	leaveRemote = getOrCreateRemoteEvent(remotesFolder, names.Leave)
-	requestStateRemote = getOrCreateRemoteEvent(remotesFolder, names.RequestState)
-	snapshotRemote = getOrCreateRemoteEvent(remotesFolder, names.SquadSnapshot)
-	invitationRemote = getOrCreateRemoteEvent(remotesFolder, names.Invitation)
-	invitationResultRemote = getOrCreateRemoteEvent(remotesFolder, names.InvitationResult)
-	noticeRemote = getOrCreateRemoteEvent(remotesFolder, names.SquadNotice)
+	inviteRemote = getOrCreateRemoteEvent(folder, names.Invite)
+	respondRemote = getOrCreateRemoteEvent(folder, names.Respond)
+	removeRemote = getOrCreateRemoteEvent(folder, names.Remove)
+	leaveRemote = getOrCreateRemoteEvent(folder, names.Leave)
+	requestStateRemote = getOrCreateRemoteEvent(folder, names.RequestState)
+	snapshotRemote = getOrCreateRemoteEvent(folder, names.SquadSnapshot)
+	invitationRemote = getOrCreateRemoteEvent(folder, names.Invitation)
+	invitationResultRemote = getOrCreateRemoteEvent(folder, names.InvitationResult)
+	noticeRemote = getOrCreateRemoteEvent(folder, names.SquadNotice)
 
 	inviteRemote.OnServerEvent:Connect(onInvite)
 	respondRemote.OnServerEvent:Connect(onRespond)
