@@ -4,7 +4,6 @@
 
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
 
 local SquadView = {}
 SquadView.__index = SquadView
@@ -198,7 +197,7 @@ local function connectButtonFeedback(button: GuiButton, image: ImageLabel?)
 			elseif hovering then
 				image.ImageColor3 = Color3.fromRGB(255, 255, 255)
 			else
-				image.ImageColor3 = Color3.fromRGB(242, 242, 242)
+				image.ImageColor3 = Color3.fromRGB(255, 255, 255)
 			end
 		end
 	end
@@ -275,6 +274,7 @@ function SquadView.new(config: any, playerGui: PlayerGui): View
 	self.Config = config
 	self.PlayerGui = playerGui
 	self.Destroyed = false
+	self.ReducedMotion = false
 	self.Scale = 1
 	self.Connections = {}
 	self.MenuTransitionRevision = 0
@@ -365,6 +365,7 @@ function SquadView:_buildMenu()
 	self.MenuLocalScale = scale
 
 	addBoundedAsset(config, canvas, "Panel", "Panel", 0, 0, 608, 15)
+
 	addBoundedAsset(config, canvas, "Title", "Title", 40, 28, 280, 16)
 
 	local close = makeTextButton("Close", canvas, Font.fromEnum(Enum.Font.Arial), 36, Color3.fromRGB(116, 91, 60))
@@ -567,6 +568,7 @@ function SquadView:_buildInvitation()
 	self.InvitationLocalScale = scale
 
 	addBoundedAsset(config, canvas, "Background", "Invitation", 0, 0, 585, 15)
+	-- Keep the supplied People asset in its original cream color on the orange ribbon.
 	addBoundedAsset(config, canvas, "People", "People", 17, 27, 48, 17)
 
 	local header = makeText("Header", canvas, config.Fonts.Body, 16, Color3.fromRGB(71, 53, 38))
@@ -606,10 +608,32 @@ function SquadView:_buildInvitation()
 	dividerLine.ZIndex = 18
 	addPlainAsset(config, canvas, "DividerCrosshair", "Crosshair", Vector2.new(454, 155), Vector2.new(18, 18), 19, COLOR_GOLD)
 
-	local accept = createAssetButton(config, canvas, "Accept", "Primary", Vector2.new(50, 180), Vector2.new(232, 65), "Accept", Color3.fromRGB(255, 240, 213), 27, 18)
+	local accept = createAssetButton(
+		config,
+		canvas,
+		"Accept",
+		"Primary",
+		Vector2.new(50, 180),
+		Vector2.new(232, 65),
+		"Accept",
+		Color3.fromRGB(255, 240, 213),
+		27,
+		18
+	)
 	self.AcceptButton = accept
 
-	local decline = createAssetButton(config, canvas, "Decline", "Secondary", Vector2.new(300, 180), Vector2.new(232, 65), "Decline", Color3.fromRGB(41, 28, 18), 27, 18)
+	local decline = createAssetButton(
+		config,
+		canvas,
+		"Decline",
+		"Secondary",
+		Vector2.new(300, 180),
+		Vector2.new(232, 65),
+		"Decline",
+		Color3.fromRGB(41, 28, 18),
+		27,
+		18
+	)
 	self.DeclineButton = decline
 end
 
@@ -689,7 +713,12 @@ function SquadView:_buildNotice()
 	self.SquadNotice = notice
 
 	local gradient = Instance.new("UIGradient")
-	gradient.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.15, 0), NumberSequenceKeypoint.new(0.85, 0), NumberSequenceKeypoint.new(1, 1)})
+	gradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.15, 0),
+		NumberSequenceKeypoint.new(0.85, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
 	gradient.Parent = notice
 
 	local text = makeText("Text", notice, config.Fonts.Body, 17, Color3.fromRGB(241, 230, 210))
@@ -710,7 +739,10 @@ function SquadView:_getScale(): number
 	if viewport.X <= 0 or viewport.Y <= 0 then
 		return 1
 	end
-	return math.min(viewport.X / self.Config.ReferenceViewport.X, viewport.Y / self.Config.ReferenceViewport.Y)
+	return math.min(
+		viewport.X / self.Config.ReferenceViewport.X,
+		viewport.Y / self.Config.ReferenceViewport.Y
+	)
 end
 
 function SquadView:_updatePlacement()
@@ -774,12 +806,20 @@ function SquadView:_bindViewport()
 	end
 end
 
+function SquadView:SetReducedMotion(enabled: boolean)
+	self.ReducedMotion = enabled
+end
+
 function SquadView:SetActiveTab(tab: string)
 	local invite = tab == "invite"
 	self.InviteTab.TextColor3 = if invite then COLOR_BROWN else COLOR_MUTED
 	self.MembersTab.TextColor3 = if invite then COLOR_MUTED else COLOR_BROWN
-	self.ActiveTabLine.Position = if invite then UDim2.fromOffset(0, 31) else UDim2.fromOffset(154, 31)
-	self.ActiveTabLine.Size = if invite then UDim2.fromOffset(132, 2) else UDim2.fromOffset(100, 2)
+	self.ActiveTabLine.Position = if invite
+		then UDim2.fromOffset(0, 31)
+		else UDim2.fromOffset(154, 31)
+	self.ActiveTabLine.Size = if invite
+		then UDim2.fromOffset(132, 2)
+		else UDim2.fromOffset(100, 2)
 	self.SectionTitle.Text = if invite then "Invite player" else "Squad members"
 	self.SearchLabel.Visible = invite
 	self.SearchArea.Visible = invite
@@ -844,7 +884,16 @@ function SquadView:RenderResults(entries: {SearchEntry}, mode: string, callbacks
 		avatar.ZIndex = 19
 		addCorner(avatar, avatarSize)
 		local peopleWidth = if mode == "members" then 42 else 49
-		addBoundedAsset(self.Config, avatar, "People", "People", (avatarSize - peopleWidth) * 0.5, math.floor((avatarSize - peopleWidth * 621 / 853) * 0.5), peopleWidth, 20)
+		addBoundedAsset(
+			self.Config,
+			avatar,
+			"People",
+			"People",
+			(avatarSize - peopleWidth) * 0.5,
+			math.floor((avatarSize - peopleWidth * 621 / 853) * 0.5),
+			peopleWidth,
+			20
+		)
 
 		local info = makeFrame("Identity", row)
 		info.Position = UDim2.fromOffset(avatarSize + 19, 0)
@@ -875,14 +924,39 @@ function SquadView:RenderResults(entries: {SearchEntry}, mode: string, callbacks
 		secondary.ZIndex = 20
 
 		if mode == "invite" and callbacks.Invite then
-			local button = createAssetButton(self.Config, row, "Invite", "Primary", Vector2.new(365, math.floor((rowHeight - 48) * 0.5)), Vector2.new(163, 48), "Invite", Color3.fromRGB(255, 240, 213), 25, 20)
+			local button = createAssetButton(
+				self.Config,
+				row,
+				"Invite",
+				"Primary",
+				Vector2.new(365, math.floor((rowHeight - 48) * 0.5)),
+				Vector2.new(163, 48),
+				"Invite",
+				Color3.fromRGB(255, 240, 213),
+				25,
+				20
+			)
 			button.Activated:Connect(function()
 				(callbacks.Invite :: (number) -> ())(entry.UserId)
 			end)
-		elseif mode == "members" and callbacks.Remove and localUserId == leaderUserId and entry.UserId ~= localUserId then
+		elseif mode == "members"
+			and callbacks.Remove
+			and localUserId == leaderUserId
+			and entry.UserId ~= localUserId then
 			-- Use the separately uploaded PrimaryAlt asset as requested, even though
 			-- its original PNG is byte-identical to Primary.
-			local button = createAssetButton(self.Config, row, "Remove", "PrimaryAlt", Vector2.new(365, math.floor((rowHeight - 48) * 0.5)), Vector2.new(163, 48), "Remove", Color3.fromRGB(255, 240, 213), 25, 20)
+			local button = createAssetButton(
+				self.Config,
+				row,
+				"Remove",
+				"PrimaryAlt",
+				Vector2.new(365, math.floor((rowHeight - 48) * 0.5)),
+				Vector2.new(163, 48),
+				"Remove",
+				Color3.fromRGB(255, 240, 213),
+				25,
+				20
+			)
 			button.Activated:Connect(function()
 				(callbacks.Remove :: (number) -> ())(entry.UserId)
 			end)
@@ -900,6 +974,13 @@ function SquadView:SetMenuOpen(open: boolean)
 	local offsetEnter = self.Config.Animation.PanelEnterOffsetY * self.Scale
 	local offsetExit = self.Config.Animation.PanelExitOffsetY * self.Scale
 
+	if self.ReducedMotion then
+		self.Menu.Position = base
+		self.Menu.GroupTransparency = if open then 0 else 1
+		self.Menu.Visible = open
+		return
+	end
+
 	if open then
 		local wasVisible = self.Menu.Visible
 		self.Menu.Visible = true
@@ -908,8 +989,12 @@ function SquadView:SetMenuOpen(open: boolean)
 			self.Menu.Position = UDim2.new(base.X.Scale, base.X.Offset, base.Y.Scale, base.Y.Offset + offsetEnter)
 		end
 		local duration = self.Config.Animation.PanelEnter
-		self.MenuTween = TweenService:Create(self.Menu, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = base})
-		self.MenuFadeTween = TweenService:Create(self.Menu, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 0})
+		self.MenuTween = TweenService:Create(self.Menu, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = base,
+		})
+		self.MenuFadeTween = TweenService:Create(self.Menu, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			GroupTransparency = 0,
+		})
 		self.MenuTween:Play()
 		self.MenuFadeTween:Play()
 	else
@@ -918,8 +1003,12 @@ function SquadView:SetMenuOpen(open: boolean)
 		end
 		local target = UDim2.new(base.X.Scale, base.X.Offset, base.Y.Scale, base.Y.Offset + offsetExit)
 		local duration = self.Config.Animation.PanelExit
-		self.MenuTween = TweenService:Create(self.Menu, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = target})
-		self.MenuFadeTween = TweenService:Create(self.Menu, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {GroupTransparency = 1})
+		self.MenuTween = TweenService:Create(self.Menu, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = target,
+		})
+		self.MenuFadeTween = TweenService:Create(self.Menu, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			GroupTransparency = 1,
+		})
 		self.MenuTween:Play()
 		self.MenuFadeTween:Play()
 		self.MenuFadeTween.Completed:Connect(function()
@@ -940,6 +1029,13 @@ function SquadView:SetInvitationVisible(visible: boolean)
 	local base = self.InvitationBasePosition or self.Invitation.Position
 	local offsetEnter = self.Config.Animation.PanelEnterOffsetY * self.Scale
 	local offsetExit = self.Config.Animation.PanelExitOffsetY * self.Scale
+
+	if self.ReducedMotion then
+		self.Invitation.Position = base
+		self.Invitation.GroupTransparency = if visible then 0 else 1
+		self.Invitation.Visible = visible
+		return
+	end
 
 	if visible then
 		local wasVisible = self.Invitation.Visible
@@ -988,8 +1084,24 @@ function SquadView:ShowNotice(text: string)
 
 	self.NoticeText.Text = text
 	self.SquadNotice.Visible = true
+	if self.ReducedMotion then
+		self.SquadNotice.GroupTransparency = 0
+		self.NoticeTimer = task.delay(self.Config.Animation.NoticeHold, function()
+			if self.Destroyed or self.NoticeRevision ~= revision then
+				return
+			end
+			self.SquadNotice.Visible = false
+			self.SquadNotice.GroupTransparency = 1
+			self.NoticeText.Text = ""
+		end)
+		return
+	end
 	self.SquadNotice.GroupTransparency = 1
-	local enter = TweenService:Create(self.SquadNotice, TweenInfo.new(self.Config.Animation.NoticeEnter, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 0})
+	local enter = TweenService:Create(
+		self.SquadNotice,
+		TweenInfo.new(self.Config.Animation.NoticeEnter, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{GroupTransparency = 0}
+	)
 	self.NoticeTween = enter
 	enter:Play()
 
@@ -997,7 +1109,11 @@ function SquadView:ShowNotice(text: string)
 		if self.Destroyed or self.NoticeRevision ~= revision then
 			return
 		end
-		local exit = TweenService:Create(self.SquadNotice, TweenInfo.new(self.Config.Animation.NoticeExit, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {GroupTransparency = 1})
+		local exit = TweenService:Create(
+			self.SquadNotice,
+			TweenInfo.new(self.Config.Animation.NoticeExit, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{GroupTransparency = 1}
+		)
 		self.NoticeTween = exit
 		exit:Play()
 		exit.Completed:Connect(function()
@@ -1022,7 +1138,11 @@ function SquadView:_createHUDRow(member: MemberData, localUserId: number): Canva
 	background.BackgroundTransparency = 0.25
 	background.ZIndex = 11
 	local fade = Instance.new("UIGradient")
-	fade.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.65, 0.35), NumberSequenceKeypoint.new(1, 1)})
+	fade.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.65, 0.35),
+		NumberSequenceKeypoint.new(1, 1),
+	})
 	fade.Parent = background
 
 	local accent = makeFrame("Accent", row)
@@ -1031,7 +1151,16 @@ function SquadView:_createHUDRow(member: MemberData, localUserId: number): Canva
 	accent.BackgroundTransparency = 0
 	accent.ZIndex = 12
 
-	local symbol = addPlainAsset(self.Config, row, "Symbol", member.identityKey, Vector2.new(10, 14), Vector2.new(27, 29), 13, color)
+	local symbol = addPlainAsset(
+		self.Config,
+		row,
+		"Symbol",
+		member.identityKey,
+		Vector2.new(10, 14),
+		Vector2.new(27, 29),
+		13,
+		color
+	)
 	symbol.ScaleType = Enum.ScaleType.Fit
 
 	local name = makeText("Name", row, self.Config.Fonts.Title, 18, Color3.fromRGB(231, 223, 205))
@@ -1040,6 +1169,7 @@ function SquadView:_createHUDRow(member: MemberData, localUserId: number): Canva
 	name.Text = member.characterName
 	name.TextTruncate = Enum.TextTruncate.AtEnd
 	name.ZIndex = 13
+	name:SetAttribute("MemberName", true)
 
 	if member.UserId == localUserId then
 		local you = makeText("You", row, self.Config.Fonts.Body, 9, Color3.fromRGB(194, 182, 160))
@@ -1067,6 +1197,7 @@ function SquadView:_createHUDRow(member: MemberData, localUserId: number): Canva
 	local hpGradient = Instance.new("UIGradient")
 	hpGradient.Color = ColorSequence.new(COLOR_HEALTH_A, COLOR_HEALTH_B)
 	hpGradient.Parent = fill
+	fill:SetAttribute("HealthFill", true)
 
 	return row
 end
@@ -1084,15 +1215,29 @@ function SquadView:UpdateHUD(members: {MemberData}, localUserId: number)
 		if not row then
 			row = self:_createHUDRow(member, localUserId)
 			self.HUDRows[member.UserId] = row
-			row.Position = UDim2.fromOffset(-10, targetY)
-			TweenService:Create(row, TweenInfo.new(self.Config.Animation.HUDRowEnter, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.fromOffset(0, targetY), GroupTransparency = 0}):Play()
+			if self.ReducedMotion then
+				row.Position = UDim2.fromOffset(0, targetY)
+				row.GroupTransparency = 0
+			else
+				row.Position = UDim2.fromOffset(-10, targetY)
+				TweenService:Create(row, TweenInfo.new(self.Config.Animation.HUDRowEnter, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Position = UDim2.fromOffset(0, targetY),
+					GroupTransparency = 0,
+				}):Play()
+			end
 		else
 			local name = row:FindFirstChild("Name")
 			if name and name:IsA("TextLabel") then
 				name.Text = member.characterName
 			end
 			if math.abs(row.Position.Y.Offset - targetY) > 0.1 then
-				TweenService:Create(row, TweenInfo.new(self.Config.Animation.HUDRowReflow, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.fromOffset(0, targetY)}):Play()
+				if self.ReducedMotion then
+					row.Position = UDim2.fromOffset(0, targetY)
+				else
+					TweenService:Create(row, TweenInfo.new(self.Config.Animation.HUDRowReflow, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+						Position = UDim2.fromOffset(0, targetY),
+					}):Play()
+				end
 			end
 		end
 
@@ -1103,20 +1248,33 @@ function SquadView:UpdateHUD(members: {MemberData}, localUserId: number)
 			if member.maxHealth > 0 then
 				ratio = math.clamp(member.health / member.maxHealth, 0, 1)
 			end
-			TweenService:Create(fill, TweenInfo.new(self.Config.Animation.HealthTween, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.fromScale(ratio, 1)}):Play()
+			if self.ReducedMotion then
+				fill.Size = UDim2.fromScale(ratio, 1)
+			else
+				TweenService:Create(fill, TweenInfo.new(self.Config.Animation.HealthTween, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Size = UDim2.fromScale(ratio, 1),
+				}):Play()
+			end
 		end
 	end
 
 	for userId, row in pairs(self.HUDRows) do
 		if not present[userId] then
 			self.HUDRows[userId] = nil
-			local tween = TweenService:Create(row, TweenInfo.new(self.Config.Animation.HUDRowRemove, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(row.Position.X.Scale, row.Position.X.Offset - 12, row.Position.Y.Scale, row.Position.Y.Offset), GroupTransparency = 1})
-			tween:Play()
-			tween.Completed:Connect(function()
-				if row.Parent then
-					row:Destroy()
-				end
-			end)
+			if self.ReducedMotion then
+				row:Destroy()
+			else
+				local tween = TweenService:Create(row, TweenInfo.new(self.Config.Animation.HUDRowRemove, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					Position = UDim2.new(row.Position.X.Scale, row.Position.X.Offset - 12, row.Position.Y.Scale, row.Position.Y.Offset),
+					GroupTransparency = 1,
+				})
+				tween:Play()
+				tween.Completed:Connect(function()
+					if row.Parent then
+						row:Destroy()
+					end
+				end)
+			end
 		end
 	end
 end
@@ -1180,8 +1338,8 @@ function SquadView:UpdateMarkers(members: {MemberData}, localUserId: number, pla
 		if member.UserId ~= localUserId then
 			present[member.UserId] = true
 			local marker = self:_ensureMarker(member)
-			local memberPlayer = playersByUserId[member.UserId]
-			local character = memberPlayer and memberPlayer.Character
+			local player = playersByUserId[member.UserId]
+			local character = player and player.Character
 			local head = character and character:FindFirstChild("Head")
 			local root = character and character:FindFirstChild("HumanoidRootPart")
 			local basePart = if head and head:IsA("BasePart") then head elseif root and root:IsA("BasePart") then root else nil
@@ -1194,7 +1352,12 @@ function SquadView:UpdateMarkers(members: {MemberData}, localUserId: number, pla
 				local localPoint = camera.CFrame:PointToObjectSpace(worldPoint)
 				local inFront = localPoint.Z < -0.05
 				local screen = Vector2.new(projected.X, projected.Y)
-				local within = inFront and onScreen and screen.X >= margin and screen.X <= viewport.X - margin and screen.Y >= margin and screen.Y <= viewport.Y - margin
+				local within = inFront
+					and onScreen
+					and screen.X >= margin
+					and screen.X <= viewport.X - margin
+					and screen.Y >= margin
+					and screen.Y <= viewport.Y - margin
 
 				local arrow = marker:FindFirstChild("Arrow") :: Frame?
 				if within then
@@ -1209,6 +1372,8 @@ function SquadView:UpdateMarkers(members: {MemberData}, localUserId: number, pla
 					if inFront then
 						direction = screen - center
 					else
+						-- Behind-camera targets must flip their projected direction so the
+						-- edge arrow points toward the shortest camera turn.
 						direction = Vector2.new(-localPoint.X, localPoint.Y)
 					end
 					if direction.Magnitude < 0.001 then
