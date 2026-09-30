@@ -15,22 +15,10 @@ local SquadConfig = {
 	},
 
 	Identities = {
-		{
-			Key = "lightning",
-			Color = Color3.fromRGB(217, 189, 105),
-		},
-		{
-			Key = "water",
-			Color = Color3.fromRGB(138, 190, 208),
-		},
-		{
-			Key = "fire",
-			Color = Color3.fromRGB(208, 129, 112),
-		},
-		{
-			Key = "wind",
-			Color = Color3.fromRGB(142, 194, 160),
-		},
+		{Key = "lightning", Color = Color3.fromRGB(217, 189, 105)},
+		{Key = "water", Color = Color3.fromRGB(138, 190, 208)},
+		{Key = "fire", Color = Color3.fromRGB(208, 129, 112)},
+		{Key = "wind", Color = Color3.fromRGB(142, 194, 160)},
 	},
 
 	Assets = {
@@ -48,7 +36,6 @@ local SquadConfig = {
 		wind = "rbxassetid://123120401552004",
 	},
 
-	-- Bounds are {x, y, width, height} within the original transparent PNG canvas.
 	AssetMeta = {
 		Panel = {Canvas = Vector2.new(1086, 1448), Bounds = {51, 64, 985, 1338}},
 		Invitation = {Canvas = Vector2.new(1620, 971), Bounds = {79, 128, 1464, 729}},
