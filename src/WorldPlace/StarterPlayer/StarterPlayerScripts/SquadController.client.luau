@@ -30,6 +30,50 @@ local noticeRemote = remotesFolder:WaitForChild(names.SquadNotice) :: RemoteEven
 
 local view = SquadView.new(SquadConfig, playerGui)
 
+-- Honor Roblox reduced-motion preference when the client exposes it.
+-- SquadView reads animation timings from its per-instance config, so reduced
+-- motion swaps only those timings/offsets to zero without changing layout.
+local reducedMotionConnection: RBXScriptConnection? = nil
+local normalViewConfig = view.Config
+local reducedAnimation = table.clone(SquadConfig.Animation)
+for key, value in pairs(reducedAnimation) do
+	if typeof(value) == "number" then
+		reducedAnimation[key] = 0
+	end
+end
+local reducedViewConfig = table.clone(SquadConfig)
+reducedViewConfig.Animation = reducedAnimation
+
+local function setReducedMotion(enabled: boolean)
+	view.Config = if enabled then reducedViewConfig else normalViewConfig
+end
+
+do
+	local okService, userGameSettings = pcall(function()
+		return UserSettings():GetService("UserGameSettings")
+	end)
+
+	if okService and userGameSettings then
+		local function syncReducedMotion()
+			local okValue, value = pcall(function()
+				return (userGameSettings :: any).ReducedMotion
+			end)
+			if okValue and typeof(value) == "boolean" then
+				setReducedMotion(value)
+			end
+		end
+
+		syncReducedMotion()
+
+		local okSignal, signal = pcall(function()
+			return (userGameSettings :: any):GetPropertyChangedSignal("ReducedMotion")
+		end)
+		if okSignal and signal then
+			reducedMotionConnection = signal:Connect(syncReducedMotion)
+		end
+	end
+end
+
 local destroyed = false
 local connections: {RBXScriptConnection} = {}
 local menuOpen = false
@@ -389,7 +433,7 @@ track(RunService.RenderStepped:Connect(function()
 		local remaining = invitation.ExpiresAt - serverNow()
 		if remaining <= 0 then
 			-- Expiration is authoritative on the server. The local panel may hide at
-			-- zero, while InvitationResult/notice carries the final server state.
+			-- zero, while InvitationResult/notice will carry the final server state.
 			clearInvitation()
 		else
 			local sender = Players:GetPlayerByUserId(invitation.SenderUserId)
@@ -404,6 +448,10 @@ track(script.Destroying:Connect(function()
 		return
 	end
 	destroyed = true
+	if reducedMotionConnection and reducedMotionConnection.Connected then
+		reducedMotionConnection:Disconnect()
+		reducedMotionConnection = nil
+	end
 	for _, connection in ipairs(connections) do
 		if connection.Connected then
 			connection:Disconnect()
