@@ -48,14 +48,15 @@ local SquadConfig = {
 		wind = "rbxassetid://123120401552004",
 	},
 
+	-- Bounds are {x, y, width, height} within the original transparent PNG canvas.
 	AssetMeta = {
-		Panel = {Canvas = Vector2.new(1086, 1448), Bounds = Vector4.new(51, 64, 985, 1338)},
-		Invitation = {Canvas = Vector2.new(1620, 971), Bounds = Vector4.new(79, 128, 1464, 729)},
-		People = {Canvas = Vector2.new(1254, 1254), Bounds = Vector4.new(220, 356, 853, 621)},
-		Primary = {Canvas = Vector2.new(2172, 724), Bounds = Vector4.new(149, 102, 1874, 510)},
-		PrimaryAlt = {Canvas = Vector2.new(2172, 724), Bounds = Vector4.new(149, 102, 1874, 510)},
-		Secondary = {Canvas = Vector2.new(2172, 724), Bounds = Vector4.new(152, 98, 1870, 508)},
-		Title = {Canvas = Vector2.new(2126, 740), Bounds = Vector4.new(64, 91, 1802, 567)},
+		Panel = {Canvas = Vector2.new(1086, 1448), Bounds = {51, 64, 985, 1338}},
+		Invitation = {Canvas = Vector2.new(1620, 971), Bounds = {79, 128, 1464, 729}},
+		People = {Canvas = Vector2.new(1254, 1254), Bounds = {220, 356, 853, 621}},
+		Primary = {Canvas = Vector2.new(2172, 724), Bounds = {149, 102, 1874, 510}},
+		PrimaryAlt = {Canvas = Vector2.new(2172, 724), Bounds = {149, 102, 1874, 510}},
+		Secondary = {Canvas = Vector2.new(2172, 724), Bounds = {152, 98, 1870, 508}},
+		Title = {Canvas = Vector2.new(2126, 740), Bounds = {64, 91, 1802, 567}},
 	},
 
 	Layout = {
