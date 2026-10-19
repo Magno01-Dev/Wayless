@@ -1,0 +1,51 @@
+name: Reconcile WorldPlace candidate
+
+on:
+  push:
+    branches:
+      - feature/worldplace-reconciliation-2026-10-19
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/worldplace-reconciliation-2026-10-19
+          fetch-depth: 0
+
+      - name: Download reconciliation payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 'https://sdmntpreastus2.oaiusercontent.com/files/00000000-60b4-81f6-9796-2aa7d150674b/raw?se=2026-10-19T23%3A57%3A03Z&sp=r&sv=2026-02-06&sr=b&scid=1d2d2eee-d1c8-56d7-a940-9405cfde5f33&skoid=434ec24f-a0f0-4e64-b0de-2e2053f69735&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-10-19T22%3A55%3A39Z&ske=2026-10-20T22%3A55%3A39Z&sks=b&skv=2026-02-06&sig=onS5vI0bDt2xCvIRXsdJGo1/GkAfOb1kQb8b/n1zYNQ%3D' -o /tmp/wayless_payload.tar.xz
+          echo "4e64ccf26dbb5d68157dfce35b02a1c14c65ecb48cf5d547bb2bf31d23c88362  /tmp/wayless_payload.tar.xz" | sha256sum -c -
+
+      - name: Apply candidate overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/wayless_payload
+          tar -xJf /tmp/wayless_payload.tar.xz -C /tmp/wayless_payload
+          cp -a /tmp/wayless_payload/overlay/. .
+          python /tmp/wayless_payload/apply_overlay.py
+          rm -rf .sync_payload
+          rm -f .github/workflows/reconcile-worldplace.yml
+
+      - name: Commit reconciled candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Reconcile installed WorldPlace jutsu, throwables and TreeJump candidate"
+          git push origin HEAD:feature/worldplace-reconciliation-2026-10-19
