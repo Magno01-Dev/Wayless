@@ -26,6 +26,49 @@ local ChakraService = require(
 	ServerScriptService:WaitForChild("ChakraService")
 )
 
+local StaminaService = require(
+	ServerScriptService:WaitForChild("StaminaService")
+)
+
+---------------------------------------------------------------------
+-- COSTE: CHAKRA O STAMINA
+--
+-- Las técnicas físicas (taijutsu) declaran StaminaCost en vez de
+-- ChakraCost: gastan stamina y el sello de supresión no las bloquea.
+---------------------------------------------------------------------
+
+local function usesStaminaOnly(
+	config: any
+): boolean
+	return typeof(config) == "table"
+		and typeof(config.StaminaCost) == "number"
+		and config.StaminaCost > 0
+		and not (
+			typeof(config.ChakraCost) == "number"
+			and config.ChakraCost > 0
+		)
+end
+
+local function spendTechniqueCost(
+	player: Player,
+	config: any,
+	jutsuId: string
+): (boolean, string, number)
+	if usesStaminaOnly(config) then
+		return StaminaService.TrySpend(
+			player,
+			config.StaminaCost,
+			"Jutsu:" .. jutsuId
+		)
+	end
+
+	return ChakraService.TrySpend(
+		player,
+		config.ChakraCost,
+		"Jutsu:" .. jutsuId
+	)
+end
+
 local DamageService = require(
 	ServerScriptService:WaitForChild("DamageService")
 )
@@ -245,8 +288,61 @@ local activeCasts:
 	{[Player]: any} =
 	{}
 
+---------------------------------------------------------------------
+-- INTERRUPCIÓN (taijutsu)
+--
+-- ServerStorage > JutsuInternal > InterruptCast:Invoke(player) -> boolean
+-- Si el jugador está haciendo sellos y su jutsu todavía no salió,
+-- el jutsu falla (el coste ya gastado no se devuelve).
+---------------------------------------------------------------------
+
+do
+	local ServerStorage =
+		game:GetService("ServerStorage")
+
+	local internal =
+		ServerStorage:FindFirstChild("JutsuInternal")
+
+	if not internal then
+		internal = Instance.new("Folder")
+		internal.Name = "JutsuInternal"
+		internal.Parent = ServerStorage
+	end
+
+	local interrupt =
+		(internal :: Folder):FindFirstChild("InterruptCast")
+
+	if not interrupt then
+		interrupt = Instance.new("BindableFunction")
+		interrupt.Name = "InterruptCast"
+		interrupt.Parent = internal
+	end
+
+	(interrupt :: BindableFunction).OnInvoke = function(
+		player: Player
+	): boolean
+		local active =
+			activeCasts[player]
+
+		if not active
+			or active.Markers.ProjectileSpawn == true then
+
+			return false
+		end
+
+		active.Interrupted =
+			true
+
+		return true
+	end
+end
+
 local REQUEST_MIN_INTERVAL =
 	0.08
+
+-- true = imprime cada solicitud, cast aceptado y marcador (solo para depurar)
+local DEBUG_JUTSU =
+	false
 
 local function now(): number
 	return workspace:GetServerTimeNow()
@@ -466,8 +562,12 @@ local function getAliveCharacter(
 		root
 end
 
+-- escape = técnica de escape (Config.Escape = true, p. ej. Nawanuke): se puede usar
+-- con ataque bloqueado (kunai clavado, hilo, parálisis), pero no aturdido ni Downed.
 local function getActionBlockReason(
-	character: Model
+	character: Model,
+	staminaOnly: boolean?,
+	escape: boolean?
 ): string?
 
 	if character:GetAttribute(
@@ -524,7 +624,8 @@ local function getActionBlockReason(
 
 		return "StatusStunned"
 
-	elseif character:GetAttribute(
+	elseif escape ~= true
+		and character:GetAttribute(
 		"Status_AttackBlocked"
 		) == true then
 
@@ -535,6 +636,15 @@ local function getActionBlockReason(
 		) == true then
 
 		return "CombatSuppressed"
+
+	-- Sello de supresión (lanzables): sin jutsus mientras dure
+	-- (el taijutsu no usa chakra: no se bloquea)
+	elseif staminaOnly ~= true
+		and character:GetAttribute(
+		"Status_ChakraSuppressed"
+		) == true then
+
+		return "ChakraSuppressed"
 
 	elseif character:GetAttribute(
 		"ChakraCharging"
@@ -603,6 +713,20 @@ local function setCastAttributes(
 		jutsuId
 	)
 
+	-- Nombre visible (lo lee el Sharingan de los Uchiha para anticipar el jutsu)
+	local castConfig =
+		resolveJutsuConfig(
+			jutsuId,
+			nil
+		)
+
+	character:SetAttribute(
+		"JutsuCastingName",
+		if castConfig and typeof(castConfig.DisplayName) == "string"
+			then castConfig.DisplayName
+			else jutsuId
+	)
+
 	character:SetAttribute(
 		"JutsuCastToken",
 		token
@@ -644,6 +768,11 @@ local function clearCastAttributes(
 
 	character:SetAttribute(
 		"JutsuCastingId",
+		nil
+	)
+
+	character:SetAttribute(
+		"JutsuCastingName",
 		nil
 	)
 
@@ -845,6 +974,51 @@ local function dispatchMarker(
 	end
 
 	-------------------------------------------------------------
+	-- SELLO DE SUPRESIÓN
+	--
+	-- Si sellan al lanzador mientras hace los sellos de mano, el
+	-- jutsu falla: se ignoran ReleaseStart / ProjectileSpawn.
+	-- RecoveryStart y CastEnd pasan para que cada jutsu limpie
+	-- (OnCastEnded). El chakra ya gastado no se devuelve.
+	-------------------------------------------------------------
+
+	-- Interrumpido por un golpe (InterruptCast, p. ej. Dynamic Entry): el jutsu no sale
+	if active.Interrupted
+		and markerName ~= "CastEnd"
+		and markerName ~= "RecoveryStart" then
+
+		return
+	end
+
+	if markerName ~= "CastEnd"
+		and markerName ~= "RecoveryStart"
+		and not usesStaminaOnly(active.Context and active.Context.Config) then
+		local caster =
+			player.Character
+
+		if active.Suppressed
+			or (caster
+				and caster:GetAttribute(
+					"Status_ChakraSuppressed"
+				) == true) then
+
+			if not active.Suppressed
+				and DEBUG_JUTSU then
+				print(
+					"[JutsuServer v12] SUPPRESSED",
+					active.JutsuId,
+					player.Name
+				)
+			end
+
+			active.Suppressed =
+				true
+
+			return
+		end
+	end
+
+	-------------------------------------------------------------
 	-- EARLIEST PROJECTILE TIME
 	--
 	-- Keeps the client marker from creating a projectile at t=0.
@@ -910,13 +1084,15 @@ local function dispatchMarker(
 	] =
 		true
 
-	print(
-		"[JutsuServer v12] MARKER",
-		active.JutsuId,
-		markerName,
-		player.Name,
-		source
-	)
+	if DEBUG_JUTSU then
+		print(
+			"[JutsuServer v12] MARKER",
+			active.JutsuId,
+			markerName,
+			player.Name,
+			source
+		)
+	end
 
 	if typeof(
 		active.Jutsu.OnCastMarker
@@ -989,12 +1165,14 @@ local function processAnimatedRequest(
 		}
 	end
 
-	print(
-		"[JutsuServer v12] REQUEST RECEIVED",
-		player.Name,
-		"Slot=" .. tostring(slotIndex or "DEV"),
-		jutsuId
-	)
+	if DEBUG_JUTSU then
+		print(
+			"[JutsuServer v12] REQUEST RECEIVED",
+			player.Name,
+			"Slot=" .. tostring(slotIndex or "DEV"),
+			jutsuId
+		)
+	end
 
 	local currentTime =
 		now()
@@ -1117,7 +1295,9 @@ local function processAnimatedRequest(
 
 	local blockReason =
 		getActionBlockReason(
-			character
+			character,
+			usesStaminaOnly(config),
+			typeof(config) == "table" and config.Escape == true
 		)
 
 	if blockReason then
@@ -1221,11 +1401,10 @@ local function processAnimatedRequest(
 	local spent,
 		spendReason,
 		chakraRemaining =
-		ChakraService.TrySpend(
+		spendTechniqueCost(
 			player,
-			config.ChakraCost,
-			"Jutsu:"
-			.. jutsuId
+			config,
+			jutsuId
 		)
 
 	if not spent then
@@ -1471,12 +1650,14 @@ local function processAnimatedRequest(
 		end
 	)
 
-	print(
-		"[JutsuServer v12] ACCEPTED",
-		player.Name,
-		jutsuId,
-		token
-	)
+	if DEBUG_JUTSU then
+		print(
+			"[JutsuServer v12] ACCEPTED",
+			player.Name,
+			jutsuId,
+			token
+		)
+	end
 
 	return {
 		Accepted = true,
@@ -1825,7 +2006,9 @@ legacyRequestRemote.OnServerEvent:
 
 			local block =
 			getActionBlockReason(
-				character
+				character,
+				usesStaminaOnly(config),
+				typeof(config) == "table" and config.Escape == true
 			)
 
 			if block then
@@ -1904,11 +2087,10 @@ legacyRequestRemote.OnServerEvent:
 			local spent,
 			spendReason,
 			chakraRemaining =
-			ChakraService.TrySpend(
+			spendTechniqueCost(
 				player,
-				config.ChakraCost,
-				"Jutsu:"
-				.. jutsuId
+				config,
+				jutsuId
 			)
 
 			if not spent then

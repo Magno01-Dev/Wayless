@@ -349,11 +349,22 @@ end
 -- PLACEHOLDER VFX
 ---------------------------------------------------------------------
 
-local function spawnBlastPlaceholder(origin: Vector3, direction: Vector3, range: number, halfAngle: number?)
-    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("WaylessGalePalmVFX")
-    if remote and remote:IsA("RemoteEvent") then
-        remote:FireAllClients(origin, direction, range, halfAngle or 42)
-    end
+-- VFX: el servidor solo avisa; cada cliente dibuja (ElementalFX > Wind)
+local ElementalFX = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
+
+local function spawnBlastPlaceholder(origin: Vector3, direction: Vector3, range: number, halfAngle: number?, caster: Model?)
+	ElementalFX.Fire(GalePalm.Id, "Blast", {
+		Origin = origin,
+		Direction = direction,
+		Range = range,
+		HalfAngle = halfAngle or 42,
+		Caster = caster,
+	})
 end
 
 local function executeBlast(
@@ -637,7 +648,8 @@ local function executeBlast(
 		origin,
 		direction,
 		range,
-		halfAngleDegrees
+		halfAngleDegrees,
+		context.Character
 	)
 end
 

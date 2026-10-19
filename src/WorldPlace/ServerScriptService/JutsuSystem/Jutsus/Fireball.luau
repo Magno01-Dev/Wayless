@@ -56,6 +56,14 @@ local ProjectileSkillshotPolicy =
 		WaitForChild("ProjectileSkillshotPolicy")
 	)
 
+local ClientBurst =
+	require(
+		ReplicatedStorage:
+		WaitForChild("JutsuSystem"):
+		WaitForChild("Shared"):
+		WaitForChild("ClientBurst")
+	)
+
 ---------------------------------------------------------------------
 -- MODULE
 ---------------------------------------------------------------------
@@ -485,12 +493,13 @@ local function playFireJutsuEndVFX(
 
 			else
 
-				descendant:
-					Emit(
-						resolveBurstCount(
-							descendant
-						)
+				-- Emit() en el servidor no se ve: la ráfaga la hace cada cliente
+				ClientBurst.Emit(
+					descendant,
+					resolveBurstCount(
+						descendant
 					)
+				)
 			end
 		end
 	end
@@ -873,11 +882,6 @@ local function refreshReleaseAim(
 
 	context.RequestData.Direction =
 		direction
-
-	print(
-		"[Fireball v16] RELEASE AIM ACCEPTED",
-		direction
-	)
 end
 
 ---------------------------------------------------------------------
@@ -2153,12 +2157,6 @@ function Fireball.OnCastMarker(
 	source: string,
 	markerPayload: any?
 )
-
-	print(
-		"[Fireball v16] MARKER",
-		semanticMarker,
-		source
-	)
 
 	if semanticMarker ==
 		"ReleaseStart" then

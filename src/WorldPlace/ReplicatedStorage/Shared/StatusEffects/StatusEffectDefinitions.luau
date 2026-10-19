@@ -166,6 +166,278 @@ local Definitions = {
 	},
 
 	-----------------------------------------------------------------
+	-- LANZABLES
+	-----------------------------------------------------------------
+
+	-- Kunai cargado: clava al objetivo un instante
+	KunaiPin = {
+		DisplayName = "Pinned",
+		Category = "HardControl",
+		DefaultDuration = 0.35,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {
+			MovementBlocked = true,
+			AttackBlocked = true,
+		},
+		Modifiers = {},
+	},
+
+	-- Senbon: cada aguja acumula (máx. 3). Al llegar a 3, el servidor la cambia por SenbonParalysis.
+	SenbonNeedle = {
+		DisplayName = "Needles",
+		Category = "Control",
+		DefaultDuration = 5.0,
+		TickInterval = nil,
+		MaxStacks = 3,
+		Stacking = "StackRefresh",
+		Flags = {},
+		Modifiers = {
+			MoveSpeedMultiplier = 0.88,
+		},
+	},
+
+	SenbonParalysis = {
+		DisplayName = "Numbed",
+		Category = "HardControl",
+		DefaultDuration = 1.2,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {
+			AttackBlocked = true,
+			ChakraChargeBlocked = true,
+		},
+		Modifiers = {
+			MoveSpeedMultiplier = 0.5,
+		},
+	},
+
+	-- Hilo ninja cargado: atado un instante (no puede moverse ni dashear)…
+	WireBind = {
+		DisplayName = "Bound",
+		Category = "HardControl",
+		DefaultDuration = 0.7,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {
+			MovementBlocked = true,
+		},
+		Modifiers = {},
+	},
+
+	-- …y después lento mientras se suelta del hilo
+	WireSlow = {
+		DisplayName = "Tangled",
+		Category = "Control",
+		DefaultDuration = 2.2,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {},
+		Modifiers = {
+			MoveSpeedMultiplier = 0.5,
+		},
+	},
+
+	-- Makibishi: pisar abrojos
+	CaltropSlow = {
+		DisplayName = "Caltrops",
+		Category = "Control",
+		DefaultDuration = 1.6,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {},
+		Modifiers = {
+			MoveSpeedMultiplier = 0.55,
+		},
+	},
+
+	-- Sello de supresión: sin jutsus ni cargar chakra (requiere el JutsuServer de JutsuFixes)
+	SealSuppressed = {
+		DisplayName = "Sealed",
+		Category = "ChakraControl",
+		DefaultDuration = 2.5,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {
+			ChakraSuppressed = true,
+			ChakraChargeBlocked = true,
+		},
+		Modifiers = {},
+	},
+
+	-- Dentro de una zona sellada (se renueva cada 0.1 s mientras sigas dentro)
+	SealZone = {
+		DisplayName = "Seal Zone",
+		Category = "ChakraControl",
+		DefaultDuration = 0.4,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {
+			ChakraSuppressed = true,
+			ChakraChargeBlocked = true,
+		},
+		Modifiers = {},
+	},
+
+	-- Bomba de veneno: el daño lo hace ThrowableServer; esto baja la regeneración de chakra
+	Poisoned = {
+		DisplayName = "Poisoned",
+		Category = "DamageOverTime",
+		DefaultDuration = 3.0,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {},
+		Modifiers = {
+			ChakraRegenMultiplier = 0.3,
+		},
+	},
+
+	-- Mientras se carga un lanzable (mantener G): más lento
+	ThrowCharging = {
+		DisplayName = "Charging Throw",
+		Category = "Self",
+		DefaultDuration = 8.0,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {},
+		Modifiers = {
+			MoveSpeedMultiplier = 0.7,
+		},
+	},
+	-----------------------------------------------------------------
+	-- GENJUTSU
+	-----------------------------------------------------------------
+
+	-- Narakumi: miedo. La visión distorsionada la dibuja GenjutsuClient; esto es la lentitud.
+	Narakumi = {
+		DisplayName = "Fear",
+		Category = "Genjutsu",
+		DefaultDuration = 3.0,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {},
+		Modifiers = {
+			MoveSpeedMultiplier = 0.8,
+		},
+	},
+	-----------------------------------------------------------------
+	-- NINJUTSU GENERAL
+	-----------------------------------------------------------------
+
+	-- Shōsen no Jutsu: mientras canalizas la curación vas muy lento
+	ShosenChannel = {
+		DisplayName = "Channeling",
+		Category = "Self",
+		DefaultDuration = 3.0,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {},
+		Modifiers = {
+			MoveSpeedMultiplier = 0.35,
+		},
+	},
+	-----------------------------------------------------------------
+	-- CLANES
+	-----------------------------------------------------------------
+
+	-- Sharingan / Byakugan activos: no regeneras chakra mientras tengas el dōjutsu
+	DojutsuActive = {
+		DisplayName = "Dōjutsu",
+		Category = "Self",
+		DefaultDuration = 3600,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {},
+		Modifiers = {
+			ChakraRegenMultiplier = 0,
+		},
+	},
+
+	-- Hyūga (Jūken): tenketsu cerrados, regeneras menos chakra
+	TenketsuClosed = {
+		DisplayName = "Tenketsu Closed",
+		Category = "ChakraControl",
+		DefaultDuration = 8.0,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {},
+		Modifiers = {
+			ChakraRegenMultiplier = 0.6,
+		},
+	},
+
+	-- Hyūga (Jūken): 5 tenketsu cerrados, sin chakra un momento
+	TenketsuSealed = {
+		DisplayName = "Tenketsu Sealed",
+		Category = "ChakraControl",
+		DefaultDuration = 2.0,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {
+			ChakraSuppressed = true,
+			ChakraChargeBlocked = true,
+		},
+		Modifiers = {},
+	},
+
+	-- Uzumaki (Fūin de marcas): sin jutsus ni cargar chakra
+	UzumakiSealed = {
+		DisplayName = "Sealed (Uzumaki)",
+		Category = "ChakraControl",
+		DefaultDuration = 3.0,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {
+			ChakraSuppressed = true,
+			ChakraChargeBlocked = true,
+		},
+		Modifiers = {},
+	},
+
+	-- Nara (Kagemane): el atrapado no se mueve por su cuenta ni ataca (lo mueve la sombra)
+	ShadowBound = {
+		DisplayName = "Shadow Bound",
+		Category = "HardControl",
+		DefaultDuration = 1.5,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {
+			MovementBlocked = true,
+			AttackBlocked = true,
+		},
+		Modifiers = {},
+	},
+
+	-- Nara (Kagemane): mientras sostienes la sombra no puedes atacar
+	ShadowHolding = {
+		DisplayName = "Holding Shadow",
+		Category = "Self",
+		DefaultDuration = 1.5,
+		TickInterval = nil,
+		MaxStacks = 1,
+		Stacking = "Refresh",
+		Flags = {
+			AttackBlocked = true,
+		},
+		Modifiers = {},
+	},
+	-----------------------------------------------------------------
 	-- INTERNAL REACTION EFFECT
 	-----------------------------------------------------------------
 

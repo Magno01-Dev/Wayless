@@ -368,11 +368,20 @@ local function applyBurstPush(
 	)
 end
 
-local function spawnBurstPlaceholder(position: Vector3, radius: number)
-    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("WaylessStaticBurstVFX")
-    if remote and remote:IsA("RemoteEvent") then
-        remote:FireAllClients(position, radius)
-    end
+-- VFX: el servidor solo avisa; cada cliente dibuja (ElementalFX > Lightning)
+local ElementalFX = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
+
+local function spawnBurstPlaceholder(position: Vector3, radius: number, caster: Model?)
+	ElementalFX.Fire(StaticBurst.Id, "Burst", {
+		Position = position,
+		Radius = radius,
+		Caster = caster,
+	})
 end
 
 local function executeBurst(
@@ -533,7 +542,8 @@ local function executeBurst(
 
 	spawnBurstPlaceholder(
 		origin,
-		radius
+		radius,
+		context.Character
 	)
 end
 

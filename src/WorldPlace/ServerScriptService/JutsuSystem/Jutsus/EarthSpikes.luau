@@ -319,55 +319,100 @@ function EarthSpikes.SanitizeRequest(
 	}
 end
 
+-- VFX: el servidor solo avisa dónde brota cada púa; cada cliente la dibuja (ElementalFX > Earth)
+local ElementalFX = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
+
 local function spawnSpikePlaceholder(
 	groundPosition: Vector3,
-	height: number
+	height: number,
+	direction: Vector3?,
+	index: number?
 )
-	local part =
-		Instance.new("Part")
+	ElementalFX.Fire(EarthSpikes.Id, "Spike", {
+		Position = groundPosition,
+		Height = height,
+		Direction = direction,
+		Index = index,
+	})
+end
 
-	part.Name =
-		"EarthSpikes_Placeholder"
+-- Levantón hacia arriba.
+-- Cambiar AssemblyLinearVelocity desde el servidor no afecta a un jugador
+-- (su personaje lo controla su cliente); un LinearVelocity sí.
+local LIFT_SPEED = 18
+local LIFT_DURATION = 0.12
 
-	part.Size =
-		Vector3.new(
-			2.2,
-			height,
-			2.2
+local function applySpikeLift(
+	targetRoot: BasePart
+)
+	local existing =
+		targetRoot:FindFirstChild(
+			"EarthSpikesLiftVelocity"
 		)
 
-	part.CFrame =
-		CFrame.new(
-			groundPosition
-			+ Vector3.new(
-				0,
-				height * 0.5,
-				0
-			)
-		)
-		* CFrame.Angles(
-			math.rad(-6),
-			math.rad(math.random(-12, 12)),
-			math.rad(5)
+	if existing then
+		existing:Destroy()
+	end
+
+	local existingAttachment =
+		targetRoot:FindFirstChild(
+			"EarthSpikesLiftAttachment"
 		)
 
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.Material = Enum.Material.Slate
-	part.Color =
-		Color3.fromRGB(
-			105,
-			82,
-			58
-		)
-	part.CastShadow = true
-	part.Parent = workspace
+	if existingAttachment then
+		existingAttachment:Destroy()
+	end
+
+	local attachment =
+		Instance.new("Attachment")
+
+	attachment.Name =
+		"EarthSpikesLiftAttachment"
+
+	attachment.Parent =
+		targetRoot
+
+	local linearVelocity =
+		Instance.new("LinearVelocity")
+
+	linearVelocity.Name =
+		"EarthSpikesLiftVelocity"
+
+	linearVelocity.Attachment0 =
+		attachment
+
+	linearVelocity.RelativeTo =
+		Enum.ActuatorRelativeTo.World
+
+	-- Solo controla el eje vertical; el movimiento horizontal sigue libre
+	linearVelocity.VelocityConstraintMode =
+		Enum.VelocityConstraintMode.Line
+
+	linearVelocity.LineDirection =
+		Vector3.yAxis
+
+	linearVelocity.LineVelocity =
+		LIFT_SPEED
+
+	linearVelocity.MaxForce =
+		1000000
+
+	linearVelocity.Parent =
+		targetRoot
 
 	Debris:AddItem(
-		part,
-		0.55
+		linearVelocity,
+		LIFT_DURATION
+	)
+
+	Debris:AddItem(
+		attachment,
+		LIFT_DURATION
 	)
 end
 
@@ -507,7 +552,9 @@ local function executeSpikes(
 
 				spawnSpikePlaceholder(
 					groundPosition,
-					height
+					height,
+					direction,
+					index
 				)
 
 				local hitCenter =
@@ -556,13 +603,9 @@ local function executeSpikes(
 						if targetRoot
 							and targetRoot:IsA("BasePart") then
 
-							targetRoot.AssemblyLinearVelocity =
-								targetRoot.AssemblyLinearVelocity
-								+ Vector3.new(
-									0,
-									18,
-									0
-								)
+							applySpikeLift(
+								targetRoot
+							)
 						end
 					end
 				end

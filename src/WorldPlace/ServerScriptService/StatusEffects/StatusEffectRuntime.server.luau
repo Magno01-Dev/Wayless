@@ -14,6 +14,9 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 print("[StatusEffectRuntime] BOOT v1.8 ElementalPotency")
 
+-- true = imprime cada tick de daño por estado (solo para depurar)
+local DEBUG_STATUS_DAMAGE = false
+
 local services =
 	ServerScriptService:WaitForChild("Services")
 
@@ -139,20 +142,23 @@ StatusEffectService.SetDamageHandler(function(
 			true,
 		})
 
-	print(
-		"[StatusFX Damage]",
-		effectId,
-		targetCharacter.Name,
-		"| result=",
-		resolution.Result,
-		"| damage=",
-		string.format(
-			"%.2f",
-			resolution.FinalDamage
-		),
-		"| stacks=",
-		context.Stacks
-	)
+	-- Antes imprimía en cada tick de daño (quemadura, veneno...) y llenaba el Output
+	if DEBUG_STATUS_DAMAGE then
+		print(
+			"[StatusFX Damage]",
+			effectId,
+			targetCharacter.Name,
+			"| result=",
+			resolution.Result,
+			"| damage=",
+			string.format(
+				"%.2f",
+				resolution.FinalDamage
+			),
+			"| stacks=",
+			context.Stacks
+		)
+	end
 end)
 
 StatusEffectService.Start()

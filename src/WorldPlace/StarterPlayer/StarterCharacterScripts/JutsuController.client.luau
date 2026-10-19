@@ -28,6 +28,9 @@ local UserInputService =
 local ContextActionService =
 	game:GetService("ContextActionService")
 
+local ContentProvider =
+	game:GetService("ContentProvider")
+
 local player =
 	Players.LocalPlayer
 
@@ -102,6 +105,32 @@ local HAND_SIGN_ANIMATIONS = {
 		"rbxassetid://80789406734721",
 }
 
+---------------------------------------------------------------------
+-- HAND SIGN TIMING (compartido por todos los jutsus)
+---------------------------------------------------------------------
+
+-- Velocidad de reproducción de cada sello (antes 0.55 en cada jutsu).
+local HAND_SIGN_SPEED =
+	0.9
+
+-- Tiempo mínimo entre un sello y el siguiente (antes 0.38).
+local HAND_SIGN_MIN_CADENCE =
+	0.22
+
+-- El siguiente sello empieza este tiempo antes de que termine el actual
+-- (antes se esperaba el final completo + 0.20 s extra).
+local HAND_SIGN_OVERLAP =
+	0.08
+
+-- Los sellos empiezan al presionar la tecla, sin esperar la respuesta
+-- del servidor. Si el servidor rechaza el cast, se cortan.
+local OPTIMISTIC_HAND_SIGNS =
+	true
+
+-- Máximo que se espera la respuesta del servidor antes de soltar el jutsu.
+local CAST_TOKEN_TIMEOUT =
+	3
+
 local RELEASE_MARKERS = {
 	ReleaseStart =
 		"ReleaseStart",
@@ -115,6 +144,158 @@ local RELEASE_MARKERS = {
 	CastEnd =
 		"CastEnd",
 }
+
+---------------------------------------------------------------------
+-- SHURIKENJUTSU: animación de lanzar
+--
+-- Usan la animación de lanzar de los lanzables (Throwables.Config.Animations.Normal).
+-- Su marcador "Release" es el momento en que salen los proyectiles; ReleaseStart,
+-- RecoveryStart y CastEnd se envían solos (respaldos de playRelease).
+---------------------------------------------------------------------
+
+local THROW_RELEASE_ANIMATION =
+	"rbxassetid://85810196265540"
+
+local THROW_RELEASE_MARKERS = {
+	ProjectileSpawn =
+		"Release",
+}
+
+local function shurikenjutsuAnimation(
+	handSigns: {string}
+): any
+	return {
+		HandSigns =
+			handSigns,
+
+		HandSignAnimations =
+			HAND_SIGN_ANIMATIONS,
+
+		HandSignPriority =
+			Enum.AnimationPriority.Action,
+
+		HandSignPlaybackSpeed =
+			HAND_SIGN_SPEED,
+
+		HandSignFadeTime =
+			0.04,
+
+		HandSignFallbackDuration =
+			0.30,
+
+		HandSignMinCadence =
+			HAND_SIGN_MIN_CADENCE,
+
+		ReleaseAnimation =
+			THROW_RELEASE_ANIMATION,
+
+		ReleasePriority =
+			Enum.AnimationPriority.Action,
+
+		ReleasePlaybackSpeed =
+			1.25,
+
+		ReleaseFadeTime =
+			0.04,
+
+		ReleaseMarkers =
+			THROW_RELEASE_MARKERS,
+	}
+end
+
+---------------------------------------------------------------------
+-- GENJUTSU: solo sellos de mano
+--
+-- Sin animación de salida: al terminar los sellos se envían los marcadores
+-- de inmediato (fallbackRelease) y el genjutsu sale en ProjectileSpawn.
+---------------------------------------------------------------------
+
+local function genjutsuAnimation(
+	handSigns: {string}
+): any
+	return {
+		HandSigns =
+			handSigns,
+
+		HandSignAnimations =
+			HAND_SIGN_ANIMATIONS,
+
+		HandSignPriority =
+			Enum.AnimationPriority.Action,
+
+		HandSignPlaybackSpeed =
+			HAND_SIGN_SPEED,
+
+		HandSignFadeTime =
+			0.04,
+
+		HandSignFallbackDuration =
+			0.30,
+
+		HandSignMinCadence =
+			HAND_SIGN_MIN_CADENCE,
+
+		ReleaseAnimation =
+			nil,
+
+		ReleaseMarkers =
+			RELEASE_MARKERS,
+	}
+end
+
+---------------------------------------------------------------------
+-- TAIJUTSU: sin sellos, animaciones del combate cuerpo a cuerpo
+--
+-- La técnica sale en el marcador indicado de cada animación
+-- (los M1 tienen "Hit"; el ataque corriendo tiene "Launch").
+-- Sin animación (nil): sale enseguida (fallbackRelease).
+---------------------------------------------------------------------
+
+local LUNGE_ANIMATION_ID =
+	"rbxassetid://122884818050264"
+
+local M1_1_ANIMATION_ID =
+	"rbxassetid://104431855936125"
+
+local M1_3_ANIMATION_ID =
+	"rbxassetid://123837934591896"
+
+local M1_4_ANIMATION_ID =
+	"rbxassetid://134382076834484"
+
+local M1_5_ANIMATION_ID =
+	"rbxassetid://85536933283172"
+
+local function taijutsuAnimation(
+	animationId: string?,
+	markerName: string?,
+	playbackSpeed: number?
+): any
+	return {
+		HandSigns =
+			{},
+
+		HandSignAnimations =
+			HAND_SIGN_ANIMATIONS,
+
+		ReleaseAnimation =
+			animationId,
+
+		ReleasePriority =
+			Enum.AnimationPriority.Action2,
+
+		ReleasePlaybackSpeed =
+			playbackSpeed or 1.0,
+
+		ReleaseFadeTime =
+			0.04,
+
+		ReleaseMarkers =
+			if markerName
+			then { ProjectileSpawn = markerName }
+			else RELEASE_MARKERS,
+	}
+end
 
 ---------------------------------------------------------------------
 -- ANIMATION DEFINITIONS
@@ -140,7 +321,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -149,7 +330,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -187,7 +368,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -196,7 +377,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -233,7 +414,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -242,7 +423,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -279,7 +460,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -288,7 +469,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -324,7 +505,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -333,7 +514,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -370,7 +551,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -379,7 +560,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -416,7 +597,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -425,7 +606,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -462,7 +643,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -471,7 +652,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -507,7 +688,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -516,7 +697,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -553,7 +734,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -562,7 +743,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -599,7 +780,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -608,7 +789,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -645,7 +826,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -654,7 +835,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -690,7 +871,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -699,7 +880,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -736,7 +917,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -745,7 +926,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -782,7 +963,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -791,7 +972,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -828,7 +1009,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -837,7 +1018,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -873,7 +1054,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -882,7 +1063,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -919,7 +1100,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -928,7 +1109,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -965,7 +1146,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -974,7 +1155,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -1011,7 +1192,7 @@ local animationDefinitions = {
 			Enum.AnimationPriority.Action,
 
 		HandSignPlaybackSpeed =
-			0.55,
+			HAND_SIGN_SPEED,
 
 		HandSignFadeTime =
 			0.04,
@@ -1020,7 +1201,7 @@ local animationDefinitions = {
 			0.30,
 
 		HandSignMinCadence =
-			0.38,
+			HAND_SIGN_MIN_CADENCE,
 
 		ReleaseAnimation =
 			"rbxassetid://72456181450753",
@@ -1037,6 +1218,104 @@ local animationDefinitions = {
 		ReleaseMarkers =
 			RELEASE_MARKERS,
 	},
+
+	-----------------------------------------------------------------
+	-- SHURIKENJUTSU (primera capa)
+	-----------------------------------------------------------------
+
+	KageShuriken =
+		shurikenjutsuAnimation({ "High" }),
+
+	SofushaSanNoTachi =
+		shurikenjutsuAnimation({}),
+
+	KunaiRain =
+		shurikenjutsuAnimation({}),
+
+	Soshujin =
+		shurikenjutsuAnimation({}),
+
+	-----------------------------------------------------------------
+	-- GENJUTSU (primera capa)
+	-----------------------------------------------------------------
+
+	GenjutsuKai =
+		genjutsuAnimation({ "Low" }),
+
+	Narakumi =
+		genjutsuAnimation({ "Medium", "High" }),
+
+	KoriShinchu =
+		genjutsuAnimation({ "Low", "High" }),
+
+	IllusionClone =
+		genjutsuAnimation({ "Medium", "Low" }),
+
+	-----------------------------------------------------------------
+	-- TAIJUTSU (primera capa)
+	-----------------------------------------------------------------
+
+	DynamicEntry =
+		taijutsuAnimation(LUNGE_ANIMATION_ID, "Launch"),
+
+	KonohaSenpu =
+		taijutsuAnimation(M1_5_ANIMATION_ID, "Hit"),
+
+	KonohaReppu =
+		taijutsuAnimation(M1_4_ANIMATION_ID, "Hit"),
+
+	CounterStance =
+		taijutsuAnimation(nil, nil),
+
+	-----------------------------------------------------------------
+	-- KENJUTSU (primera capa) · animaciones de M1 (temporales)
+	-----------------------------------------------------------------
+
+	Iai =
+		taijutsuAnimation(M1_1_ANIMATION_ID, "Hit", 1.35),
+
+	ChakuraNagashi =
+		genjutsuAnimation({ "Medium" }),
+
+	Tsuki =
+		taijutsuAnimation(M1_3_ANIMATION_ID, "Hit", 1.15),
+
+	Kesagiri =
+		taijutsuAnimation(M1_5_ANIMATION_ID, "Hit", 0.7),
+
+	-----------------------------------------------------------------
+	-- NINJUTSU GENERAL (primera capa)
+	-----------------------------------------------------------------
+
+	Shunshin =
+		genjutsuAnimation({ "Low" }),
+
+	-- Sin sellos: escapar tiene que ser instantáneo
+	Nawanuke =
+		taijutsuAnimation(nil, nil),
+
+	Henge =
+		genjutsuAnimation({ "Medium", "High" }),
+
+	Shosen =
+		genjutsuAnimation({ "Low", "Medium" }),
+
+	-----------------------------------------------------------------
+	-- CLANES (etapa 1)
+	-----------------------------------------------------------------
+
+	-- Dōjutsu: se activan / desactivan al instante
+	Sharingan =
+		taijutsuAnimation(nil, nil),
+
+	Byakugan =
+		taijutsuAnimation(nil, nil),
+
+	UzumakiFuin =
+		genjutsuAnimation({ "High" }),
+
+	Kagemane =
+		genjutsuAnimation({ "Low" }),
 }
 
 ---------------------------------------------------------------------
@@ -1271,20 +1550,225 @@ local function loadTrack(
 end
 
 ---------------------------------------------------------------------
+-- TRACK CACHE
+--
+-- Cada animación se carga una sola vez por Animator y se reutiliza.
+-- Antes se cargaba y se destruía en cada sello, y la primera vez
+-- había que esperar a que bajara el asset (hasta 1 s por sello).
+---------------------------------------------------------------------
+
+local trackCache: {[Animator]: {[string]: AnimationTrack}} =
+	setmetatable({}, { __mode = "k" }) :: any
+
+local function getTrack(
+	animator: Animator,
+	animationId: string,
+	priority: Enum.AnimationPriority
+): AnimationTrack?
+
+	local cache =
+		trackCache[animator]
+
+	if not cache then
+		cache = {}
+		trackCache[animator] = cache
+	end
+
+	local track =
+		cache[animationId]
+
+	if not track then
+		track =
+			loadTrack(
+				animator,
+				animationId,
+				priority
+			)
+
+		if not track then
+			return nil
+		end
+
+		cache[animationId] =
+			track
+	end
+
+	track.Priority =
+		priority
+
+	return track
+end
+
+---------------------------------------------------------------------
+-- PRELOAD
+--
+-- Descarga y carga todas las animaciones de sellos y de release al
+-- aparecer el personaje, para que el primer jutsu no sea más lento.
+---------------------------------------------------------------------
+
+local function preloadAnimations()
+	local character =
+		player.Character
+
+	if not character then
+		return
+	end
+
+	local priorities: {[string]: Enum.AnimationPriority} =
+		{}
+
+	for _, config in pairs(
+		animationDefinitions
+		) do
+
+		if typeof(config) ~= "table" then
+			continue
+		end
+
+		for _, signName in ipairs(
+			config.HandSigns or {}
+			) do
+
+			local id =
+				config.HandSignAnimations
+				and config.HandSignAnimations[signName]
+
+			if typeof(id) == "string" then
+				priorities[id] =
+					config.HandSignPriority
+					or Enum.AnimationPriority.Action
+			end
+		end
+
+		if typeof(config.ReleaseAnimation) == "string" then
+			priorities[config.ReleaseAnimation] =
+				config.ReleasePriority
+				or Enum.AnimationPriority.Action
+		end
+	end
+
+	local animations: {Instance} =
+		{}
+
+	for id in pairs(priorities) do
+		local animation =
+			Instance.new("Animation")
+
+		animation.AnimationId =
+			id
+
+		table.insert(
+			animations,
+			animation
+		)
+	end
+
+	pcall(
+		function()
+			ContentProvider:PreloadAsync(
+				animations
+			)
+		end
+	)
+
+	for _, animation in ipairs(animations) do
+		animation:Destroy()
+	end
+
+	local animator =
+		getAnimator(
+			character
+		)
+
+	if not animator then
+		return
+	end
+
+	for id, priority in pairs(priorities) do
+		getTrack(
+			animator,
+			id,
+			priority
+		)
+	end
+end
+
+---------------------------------------------------------------------
+-- LOCAL CAST
+--
+-- Un cast local puede empezar antes de que el servidor responda.
+-- Token = nil mientras no llega la respuesta.
+---------------------------------------------------------------------
+
+type LocalCast = {
+	JutsuId: string,
+	Token: string?,
+	Rejected: boolean,
+	PendingSignSFX: boolean,
+}
+
+local localCast: LocalCast? =
+	nil
+
+local function sendSignSFX(
+	cast: LocalCast
+)
+	if cast.Token then
+		animatedSFX:FireServer(
+			cast.JutsuId,
+			cast.Token,
+			"HandSign"
+		)
+	else
+		-- Se manda en cuanto el servidor confirme el cast
+		cast.PendingSignSFX =
+			true
+	end
+end
+
+local function waitForToken(
+	cast: LocalCast,
+	generation: number
+): string?
+
+	local deadline =
+		os.clock()
+		+ CAST_TOKEN_TIMEOUT
+
+	while cast.Token == nil
+		and not cast.Rejected
+		and generation ==
+		animationGeneration
+		and os.clock() <
+		deadline do
+
+		task.wait()
+	end
+
+	if cast.Rejected
+		or generation ~=
+		animationGeneration then
+
+		return nil
+	end
+
+	return cast.Token
+end
+
+---------------------------------------------------------------------
 -- PLAY HAND SIGN
 ---------------------------------------------------------------------
 
 local function playOneShot(
 	animator: Animator,
-	jutsuId: string,
+	cast: LocalCast,
 	animationId: string,
 	priority: Enum.AnimationPriority,
 	fadeTime: number,
 	playbackSpeed: number,
 	fallbackDuration: number,
 	minCadence: number,
-	generation: number,
-	token: string
+	generation: number
 ): boolean
 
 	if generation ~=
@@ -1294,7 +1778,7 @@ local function playOneShot(
 	end
 
 	local track =
-		loadTrack(
+		getTrack(
 			animator,
 			animationId,
 			priority
@@ -1311,24 +1795,9 @@ local function playOneShot(
 	-- UNIVERSAL HAND SIGN SFX
 	-----------------------------------------------------------------
 
-	animatedSFX:FireServer(
-		jutsuId,
-		token,
-		"HandSign"
+	sendSignSFX(
+		cast
 	)
-
-	local stopped =
-		false
-
-	local connection =
-		track.Stopped:
-		Connect(
-			function()
-
-				stopped =
-				true
-			end
-		)
 
 	track:Play(
 		fadeTime,
@@ -1337,12 +1806,12 @@ local function playOneShot(
 	)
 
 	-----------------------------------------------------------------
-	-- WAIT FOR LENGTH
+	-- WAIT FOR LENGTH (con la precarga normalmente ya está disponible)
 	-----------------------------------------------------------------
 
 	local lengthDeadline =
 		os.clock()
-		+ 1
+		+ 0.5
 
 	while track.Length <= 0
 		and os.clock() <
@@ -1364,18 +1833,21 @@ local function playOneShot(
 				playbackSpeed,
 				0.01
 			)
-			+ 0.20
+			- HAND_SIGN_OVERLAP
 	end
 
+	-----------------------------------------------------------------
+	-- WAIT FOR SIGN (respetando la cadencia mínima)
+	-----------------------------------------------------------------
+
 	local deadline =
-		os.clock()
+		startedAt
 		+ math.max(
-			0.10,
+			minCadence,
 			waitTime
 		)
 
-	while not stopped
-		and os.clock() <
+	while os.clock() <
 		deadline
 		and generation ==
 		animationGeneration do
@@ -1383,35 +1855,12 @@ local function playOneShot(
 		task.wait()
 	end
 
-	-----------------------------------------------------------------
-	-- MINIMUM CADENCE
-	-----------------------------------------------------------------
-
-	local cadenceDeadline =
-		startedAt
-		+ math.max(
-			0,
-			minCadence
-		)
-
-	while os.clock() <
-		cadenceDeadline
-		and generation ==
-		animationGeneration do
-
-		task.wait()
-	end
-
-	connection:Disconnect()
-
 	if track.IsPlaying then
 
 		track:Stop(
 			fadeTime
 		)
 	end
-
-	track:Destroy()
 
 	return generation ==
 		animationGeneration
@@ -1545,7 +1994,7 @@ local function playRelease(
 	end
 
 	local track =
-		loadTrack(
+		getTrack(
 			animator,
 			animationId,
 			config.ReleasePriority
@@ -1627,8 +2076,11 @@ local function playRelease(
 			Connect(
 				function()
 
-					stopped =
-					true
+					-- El track se reutiliza: ignora un Stopped atrasado de un cast anterior
+					if not track.IsPlaying then
+						stopped =
+						true
+					end
 				end
 			)
 	)
@@ -1756,8 +2208,6 @@ local function playRelease(
 				or 0.04
 		)
 	end
-
-	track:Destroy()
 end
 
 ---------------------------------------------------------------------
@@ -1765,9 +2215,12 @@ end
 ---------------------------------------------------------------------
 
 local function playCastAnimations(
-	jutsuId: string,
-	token: string
+	cast: LocalCast,
+	generation: number
 )
+	local jutsuId =
+		cast.JutsuId
+
 	local config =
 		animationDefinitions[
 	jutsuId
@@ -1798,19 +2251,21 @@ local function playCastAnimations(
 			character
 		)
 
-	animationGeneration +=
-		1
-
-	local generation =
-		animationGeneration
-
 	if not animator then
 
-		fallbackRelease(
-			jutsuId,
-			token,
-			generation
-		)
+		local token =
+			waitForToken(
+				cast,
+				generation
+			)
+
+		if token then
+			fallbackRelease(
+				jutsuId,
+				token,
+				generation
+			)
+		end
 
 		return
 	end
@@ -1840,20 +2295,19 @@ local function playCastAnimations(
 			local completed =
 				playOneShot(
 					animator,
-					jutsuId,
+					cast,
 					animationId,
 					config.HandSignPriority
 					or Enum.AnimationPriority.Action,
 					config.HandSignFadeTime
 					or 0.04,
 					config.HandSignPlaybackSpeed
-					or 1,
+					or HAND_SIGN_SPEED,
 					config.HandSignFallbackDuration
 					or 0.30,
 					config.HandSignMinCadence
-					or 0.38,
-					generation,
-					token
+					or HAND_SIGN_MIN_CADENCE,
+					generation
 				)
 
 			if not completed then
@@ -1862,9 +2316,17 @@ local function playCastAnimations(
 		end
 	end
 
-	if generation ~=
-		animationGeneration then
+	-----------------------------------------------------------------
+	-- WAIT FOR SERVER (solo si respondió más lento que los sellos)
+	-----------------------------------------------------------------
 
+	local token =
+		waitForToken(
+			cast,
+			generation
+		)
+
+	if not token then
 		return
 	end
 
@@ -1891,6 +2353,117 @@ local function playCastAnimations(
 	)
 end
 
+local function runCast(
+	cast: LocalCast,
+	generation: number
+)
+	playCastAnimations(
+		cast,
+		generation
+	)
+
+	if localCast == cast then
+		localCast =
+			nil
+	end
+end
+
+local function startLocalCast(
+	jutsuId: string,
+	token: string?
+): LocalCast
+
+	animationGeneration +=
+		1
+
+	local cast: LocalCast = {
+		JutsuId =
+			jutsuId,
+
+		Token =
+			token,
+
+		Rejected =
+			false,
+
+		PendingSignSFX =
+			false,
+	}
+
+	localCast =
+		cast
+
+	task.spawn(
+		runCast,
+		cast,
+		animationGeneration
+	)
+
+	return cast
+end
+
+-- El servidor rechazó el cast: se cortan los sellos que ya empezaron
+local function cancelLocalCast(
+	cast: LocalCast?
+)
+	if not cast then
+		return
+	end
+
+	cast.Rejected =
+		true
+
+	if localCast == cast then
+
+		animationGeneration +=
+			1
+
+		localCast =
+			nil
+	end
+end
+
+-- Evita empezar sellos que el servidor seguro va a rechazar
+local function canStartOptimistic(
+	character: Model,
+	jutsuId: string
+): boolean
+
+	local serverNow =
+		workspace:GetServerTimeNow()
+
+	if character:GetAttribute(
+		"JutsuCasting"
+		) == true then
+
+		local castEndsAt =
+			character:GetAttribute(
+				"JutsuCastEndsAt"
+			)
+
+		if typeof(castEndsAt) ~= "number"
+			or castEndsAt > serverNow then
+
+			return false
+		end
+	end
+
+	local cooldownEndsAt =
+		character:GetAttribute(
+			"CoreCooldown_"
+			.. jutsuId
+			.. "_EndsAt"
+		)
+
+	if typeof(cooldownEndsAt) == "number"
+		and cooldownEndsAt > serverNow + 0.05 then
+
+		return false
+	end
+
+	return true
+end
+
 ---------------------------------------------------------------------
 -- REQUEST
 ---------------------------------------------------------------------
@@ -1898,7 +2471,9 @@ end
 local function requestTechniqueSlotCast(
 	slotIndex: number
 )
-	if requestBusy then
+	if requestBusy
+		or localCast then
+
 		return
 	end
 
@@ -1970,6 +2545,28 @@ local function requestTechniqueSlotCast(
 
 	requestBusy = true
 
+	-----------------------------------------------------------------
+	-- OPTIMISTIC START
+	--
+	-- Los sellos empiezan ya, mientras el servidor valida.
+	-----------------------------------------------------------------
+
+	local cast: LocalCast? =
+		nil
+
+	if OPTIMISTIC_HAND_SIGNS
+		and canStartOptimistic(
+			character,
+			expectedTechniqueId
+		) then
+
+		cast =
+			startLocalCast(
+				expectedTechniqueId,
+				nil
+			)
+	end
+
 	local invokeOk,
 		response =
 		pcall(
@@ -1991,6 +2588,10 @@ local function requestTechniqueSlotCast(
 
 	if not invokeOk then
 
+		cancelLocalCast(
+			cast
+		)
+
 		warn(
 			"[JutsuController] InvokeServer failed for slot:",
 			slotIndex,
@@ -2002,6 +2603,10 @@ local function requestTechniqueSlotCast(
 
 	if typeof(response) ~= "table" then
 
+		cancelLocalCast(
+			cast
+		)
+
 		warn(
 			"[JutsuController] Invalid response for slot:",
 			slotIndex
@@ -2012,11 +2617,23 @@ local function requestTechniqueSlotCast(
 
 	if response.Accepted ~= true then
 
-		warn(
-			"[JutsuController] REJECTED:",
-			"Slot " .. tostring(slotIndex),
-			response.Reason
+		cancelLocalCast(
+			cast
 		)
+
+		-- Cooldown / ya lanzando / sin chakra son rechazos normales, no errores
+		-- "Toggled": técnicas de modo (Sharingan, Byakugan) que se apagan al volver a pulsarlas
+		if response.Reason ~= "Cooldown"
+			and response.Reason ~= "AlreadyCasting"
+			and response.Reason ~= "RequestThrottle"
+			and response.Reason ~= "Toggled" then
+
+			warn(
+				"[JutsuController] REJECTED:",
+				"Slot " .. tostring(slotIndex),
+				response.Reason
+			)
+		end
 
 		return
 	end
@@ -2026,6 +2643,10 @@ local function requestTechniqueSlotCast(
 
 	if typeof(jutsuId) ~= "string"
 		or jutsuId == "" then
+
+		cancelLocalCast(
+			cast
+		)
 
 		warn(
 			"[JutsuController] Accepted response missing JutsuId:",
@@ -2041,6 +2662,10 @@ local function requestTechniqueSlotCast(
 		]
 		) ~= "table" then
 
+		cancelLocalCast(
+			cast
+		)
+
 		warn(
 			"[JutsuController] Server resolved jutsu missing local config:",
 			slotIndex,
@@ -2054,6 +2679,10 @@ local function requestTechniqueSlotCast(
 		response.CastToken
 		) ~= "string" then
 
+		cancelLocalCast(
+			cast
+		)
+
 		return
 	end
 
@@ -2062,8 +2691,39 @@ local function requestTechniqueSlotCast(
 		"Jutsu:" .. jutsuId
 	)
 
-	task.spawn(
-		playCastAnimations,
+	-----------------------------------------------------------------
+	-- CONFIRM
+	-----------------------------------------------------------------
+
+	if cast
+		and not cast.Rejected
+		and localCast == cast
+		and cast.JutsuId == jutsuId then
+
+		cast.Token =
+			response.CastToken
+
+		if cast.PendingSignSFX then
+
+			cast.PendingSignSFX =
+				false
+
+			animatedSFX:FireServer(
+				jutsuId,
+				response.CastToken,
+				"HandSign"
+			)
+		end
+
+		return
+	end
+
+	-- Sin inicio optimista (o el slot cambió mientras tanto): empezar ahora
+	cancelLocalCast(
+		cast
+	)
+
+	startLocalCast(
 		jutsuId,
 		response.CastToken
 	)
@@ -2193,8 +2853,19 @@ player.CharacterAdded:
 
 			requestBusy =
 			false
+
+			localCast =
+			nil
+
+			task.spawn(
+				preloadAnimations
+			)
 		end
 	)
+
+task.spawn(
+	preloadAnimations
+)
 
 print(
 	"[JutsuController] READY v16 BulkDoton"

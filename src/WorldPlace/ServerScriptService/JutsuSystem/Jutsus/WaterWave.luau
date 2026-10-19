@@ -218,140 +218,14 @@ local function resolveDamageableEntity(
 	return entity
 end
 
--- All WaterWave visuals live in this server module and replicate with the wave.
--- Same palette as WaterBullet. No extra scripts, remotes or renderer.
-local WATER_BLUE = Color3.fromRGB(24, 151, 220)
-local WATER_CYAN = Color3.fromRGB(110, 228, 250)
-local WATER_WHITE = Color3.fromRGB(221, 253, 255)
-local TweenService = game:GetService("TweenService")
-
-local function waterAssets(): Instance?
-	local vfx = ReplicatedStorage:FindFirstChild("VFX")
-	local jutsus = vfx and vfx:FindFirstChild("Jutsus")
-	return jutsus and jutsus:FindFirstChild("Water")
-end
-
-local function makePart(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3, alpha: number): Part
-	local p = Instance.new("Part")
-	p.Name, p.Size, p.CFrame = name, size, cf
-	p.Color, p.Transparency = color, alpha
-	p.Material = Enum.Material.SmoothPlastic
-	p.Anchored, p.CanCollide, p.CanTouch, p.CanQuery, p.CastShadow = true, false, false, false, false
-	p:SetAttribute("ProjectileIgnore", true)
-	p.Parent = parent
-	return p
-end
-
-local function point(root: BasePart, position: Vector3, axis: Vector3): Attachment
-	local a = Instance.new("Attachment")
-	a.Position, a.Axis, a.Parent = position, axis, root
-	return a
-end
-
-local function ribbon(root: BasePart, name: string, a: Vector3, b: Vector3, axisA: Vector3, axisB: Vector3, width: number, curveA: number, curveB: number, color: Color3, alpha: number): Beam
-	local beam = Instance.new("Beam")
-	beam.Name = name
-	beam.Attachment0, beam.Attachment1 = point(root, a, axisA), point(root, b, axisB)
-	beam.Width0, beam.Width1 = width, width * 0.75
-	beam.CurveSize0, beam.CurveSize1 = curveA, curveB
-	beam.Color, beam.Transparency = ColorSequence.new(color), NumberSequence.new(alpha)
-	beam.Segments, beam.FaceCamera, beam.LightEmission = 16, true, 0.12
-	beam.Parent = root
-	return beam
-end
-
-local function spawnWaterfallVfx(position: Vector3, direction: Vector3, yawDegrees: number, width: number, height: number): (Instance?, BasePart?)
-	local model = Instance.new("Model")
-	model.Name = "WaterWave_VFX"
-	local root = makePart(model, "Root", Vector3.one * 0.1, CFrame.identity, WATER_BLUE, 1)
-	model.PrimaryPart = root
-	local water = waterAssets()
-	local assets = water and water:FindFirstChild("WaterWaveAssets")
-	local template = assets and assets:FindFirstChild("WaveBodyMesh")
-	local meshTemplate: MeshPart? = nil
-	if template and template:IsA("MeshPart") then
-		meshTemplate = template
-	elseif template then
-		meshTemplate = template:FindFirstChildWhichIsA("MeshPart", true) :: MeshPart?
-	end
-	if meshTemplate then
-		local body = meshTemplate:Clone()
-		body:ClearAllChildren()
-		body.Name, body.Size = "WaterBody", Vector3.new(width, height, 4)
-		body.CFrame = CFrame.new(0, height * 0.5, 0)
-		body.Color, body.Transparency, body.Material = WATER_BLUE, 0.22, Enum.Material.SmoothPlastic
-		body.TextureID = ""
-		body.Anchored, body.CanCollide, body.CanTouch, body.CanQuery, body.CastShadow = true, false, false, false, false
-		body:SetAttribute("ProjectileIgnore", true)
-		body.Parent = model
-	else
-		-- Curved water sheets keep the effect visible before mesh import.
-		for i = 0, 8 do
-			local x = (i / 8 - 0.5) * width * 0.9
-			ribbon(root, "WaterSheet", Vector3.new(x, 0.15, 2), Vector3.new(x, height * 0.72, -2), Vector3.yAxis, -Vector3.yAxis, width / 8, height * 0.9, height * 0.45, WATER_BLUE, 0.22)
-		end
-	end
-	-- Thin flow lines along the face. These complement the solid curved mesh.
-	for i = 0, 4 do
-		local x = (i / 4 - 0.5) * width * 0.85
-		ribbon(root, "Flow", Vector3.new(x, 0.1, 2.05), Vector3.new(x, height * 0.72, -2.05), Vector3.yAxis, -Vector3.yAxis, 0.12, height * 0.9, height * 0.45, WATER_CYAN, 0.3)
-	end
-	-- Broken foam crest, avoiding a solid glowing outline.
-	for i = 0, 5 do
-		local x = (i / 6 - 0.5) * width
-		ribbon(root, "FoamCrest", Vector3.new(x, height * 0.75, -2.06), Vector3.new(x + width / 6 * 0.85, height * 0.75, -2.06), Vector3.yAxis, -Vector3.yAxis, 0.24, 0.35, 0.35, WATER_WHITE, 0.18)
-	end
-	local texture = water and water:GetAttribute("FoamTexture")
-	if typeof(texture) ~= "string" or texture == "" then
-		texture = "rbxassetid://86316295285516"
-	end
-	-- Distributed emitters, continuous rates: no remote Emit calls every frame.
-	for i = 0, 4 do
-		local a = point(root, Vector3.new((i / 4 - 0.5) * width * 0.9, height * 0.73, -2), Vector3.xAxis)
-		local e = Instance.new("ParticleEmitter")
-		e.Name, e.Texture = "WaterFoam", texture
-		e.Rate, e.Lifetime, e.Speed = 8, NumberRange.new(0.18, 0.32), NumberRange.new(3, 6)
-		e.EmissionDirection, e.SpreadAngle = Enum.NormalId.Top, Vector2.new(40, 40)
-		e.Acceleration, e.Drag = Vector3.new(0, -22, 0), 2
-		e.Color = ColorSequence.new(WATER_WHITE, WATER_CYAN)
-		e.Size = NumberSequence.new(0.45, 0.1)
-		e.Transparency = NumberSequence.new(0.2, 1)
-		e.Rotation, e.RotSpeed = NumberRange.new(-180, 180), NumberRange.new(-70, 70)
-		e.LightEmission = 0.15
-		e.Parent = a
-	end
-	for side = -1, 1, 2 do
-		local trail = Instance.new("Trail")
-		trail.Attachment0 = point(root, Vector3.new(side * width * 0.45, 0.12, 0), Vector3.xAxis)
-		trail.Attachment1 = point(root, Vector3.new(side * width * 0.35, 0.12, 1), Vector3.xAxis)
-		trail.Color, trail.Transparency = ColorSequence.new(WATER_CYAN), NumberSequence.new(0.5, 1)
-		trail.Lifetime, trail.MinLength, trail.FaceCamera = 0.16, 0.1, true
-		trail.Parent = root
-	end
-	model:PivotTo(safeLookAt(position, direction) * CFrame.Angles(0, math.rad(yawDegrees), 0))
-	model.Parent = workspace
-	Debris:AddItem(model, 10)
-	return model, root
-end
-
-local function moveWaterfallVfx(vfx: Instance?, root: BasePart?, position: Vector3)
-	if not vfx or not vfx:IsA("Model") or not vfx.Parent or not root then return end
-	vfx:PivotTo(CFrame.new(position) * root.CFrame.Rotation)
-end
-
-local function cleanupWaterVfx(vfx: Instance?)
-	if not vfx or not vfx.Parent then return end
-	for _, item in vfx:GetDescendants() do
-		if item:IsA("ParticleEmitter") or item:IsA("Trail") then
-			item.Enabled = false
-		elseif item:IsA("Beam") then
-			TweenService:Create(item, TweenInfo.new(0.18), {Width0 = 0, Width1 = 0}):Play()
-		elseif item:IsA("BasePart") then
-			TweenService:Create(item, TweenInfo.new(0.18), {Transparency = 1}):Play()
-		end
-	end
-	Debris:AddItem(vfx, 0.5)
-end
+-- VFX: el servidor solo avisa (inicio y hasta dónde llegó); cada cliente dibuja la ola
+-- siguiendo el suelo (ReplicatedStorage > JutsuSystem > ElementalFX > Water).
+local ElementalFX = require(
+	ReplicatedStorage
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
 
 
 ---------------------------------------------------------------------
@@ -1084,14 +958,25 @@ local function executeWave(
 	-- SPAWN VFX
 	-----------------------------------------------------------------
 
-	local vfx, vfxRoot =
-		spawnWaterfallVfx(
-			initialVfxPosition,
-			direction,
-			vfxYawDegrees,
-			width,
-			height
-		)
+	-- Cada cliente simula la ola con estos datos (misma velocidad y mismo seguimiento del suelo)
+	local fxId =
+		ElementalFX.NewId()
+
+	ElementalFX.Fire(WaterWave.Id, "Start", {
+		Id = fxId,
+		Caster = context.Character,
+		Origin = castOrigin,
+		Direction = direction,
+		StartDistance = startDistance,
+		Distance = distance,
+		Speed = speed,
+		Width = width,
+		Height = height,
+		HeightOffset = vfxHeightOffset,
+		YawDegrees = vfxYawDegrees,
+	})
+
+	local _ = initialVfxPosition
 
 	-----------------------------------------------------------------
 	-- HIT TRACKING
@@ -1220,19 +1105,7 @@ local function executeWave(
 			-- MOVE VISUAL
 			---------------------------------------------------------
 
-			local visualPosition =
-				groundPosition
-				+ Vector3.new(
-					0,
-					vfxHeightOffset,
-					0
-				)
-
-			moveWaterfallVfx(
-				vfx,
-				vfxRoot,
-				visualPosition
-			)
+			-- (el visual lo mueve cada cliente)
 
 			---------------------------------------------------------
 			-- HITBOX
@@ -1337,9 +1210,11 @@ local function executeWave(
 		-- CLEANUP
 		-----------------------------------------------------------------
 
-		cleanupWaterVfx(
-			vfx
-		)
+		-- Hasta dónde llegó realmente (pared, lanzador muerto o distancia completa)
+		ElementalFX.Fire(WaterWave.Id, "End", {
+			Id = fxId,
+			Travelled = travelled,
+		})
 	end)
 end
 

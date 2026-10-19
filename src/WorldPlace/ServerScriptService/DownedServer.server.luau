@@ -1,6 +1,9 @@
 --!strict
--- DownedServer v31.5 - DB CCL Cleanup + Carry Pickup Ground Clearance
+-- DownedServer v31.6 - DB CCL Cleanup + Carry Pickup Ground Clearance
 -- ServerScriptService > DownedServer
+--
+-- v31.6: el tiempo de Downed se multiplica por el atributo del jugador DownedTimeMultiplier
+-- (fuerza vital Uzumaki). Nada más cambia.
 --
 -- Existing remotes:
 -- ReplicatedStorage > DownedRemotes
@@ -170,6 +173,16 @@ applyDamageFunction.Parent = internalFolder
 -- =========================
 
 local DOWNED_TIME = 20
+
+-- v31.6: multiplicador por jugador (atributo DownedTimeMultiplier).
+-- Lo pone el kit de clanes: la fuerza vital Uzumaki se recupera antes.
+local function getDownedTime(player: Player): number
+	local multiplier = player:GetAttribute("DownedTimeMultiplier")
+	if typeof(multiplier) == "number" and multiplier > 0.2 and multiplier <= 2 then
+		return DOWNED_TIME * multiplier
+	end
+	return DOWNED_TIME
+end
 local RECOVERY_HEALTH = 30
 local DOWNED_HEALTH = 1
 
@@ -1428,7 +1441,7 @@ local function enterDowned(player: Player)
 	character:SetAttribute("IsDownedAirborne", false)
 
 	info.downedAt = time()
-	info.recoveryDeadline = info.downedAt + DOWNED_TIME
+	info.recoveryDeadline = info.downedAt + getDownedTime(player)
 	info.carriedBy = nil
 
 	setDownedAttributes(character, true, false)
@@ -1773,7 +1786,7 @@ detachCarry = function(
 			-- cannot actually begin until the body has landed.
 			targetInfo.downedAt = time()
 			targetInfo.recoveryDeadline =
-				targetInfo.downedAt + DOWNED_TIME
+				targetInfo.downedAt + getDownedTime(target)
 
 			beginAirborneDrop(target, carrierRoot)
 		end
@@ -2312,7 +2325,7 @@ local function executePlayer(
 			-- the same physical Downed state; only the recovery clock resets.
 			targetInfo.downedAt = time()
 			targetInfo.recoveryDeadline =
-				targetInfo.downedAt + DOWNED_TIME
+				targetInfo.downedAt + getDownedTime(target)
 
 			if not targetInfo.carriedBy
 				and not targetInfo.airborne then

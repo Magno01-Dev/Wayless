@@ -1241,6 +1241,9 @@ local function updateVisibility()
 				character,
 				head
 			)
+			and character:GetAttribute("ThrowablesConcealed") ~= true
+			and character:GetAttribute("GenjutsuHidden") ~= true
+			and character:GetAttribute("HengeActive") ~= true
 	end
 end
 

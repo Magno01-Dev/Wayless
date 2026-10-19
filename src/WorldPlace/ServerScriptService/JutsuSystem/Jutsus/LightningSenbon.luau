@@ -287,10 +287,13 @@ function LightningSenbon.SanitizeRequest(
 	}
 end
 
-local LightningSenbonVFX = require(script:WaitForChild("LightningSenbonVFX"))
-local function makeSenbonVisual(position: Vector3, direction: Vector3): BasePart
-    return LightningSenbonVFX.Create(position, direction)
-end
+-- VFX: el servidor solo avisa; cada cliente dibuja (ElementalFX > Lightning)
+local ElementalFX = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
 
 local function launchNeedle(
 	context: any,
@@ -303,15 +306,19 @@ local function launchNeedle(
 	local position =
 		origin
 
-	local visual =
-		makeSenbonVisual(
+	local fxId =
+		ElementalFX.Projectile(
+			LightningSenbon.Id,
+			context.Character,
 			position,
-			direction
+			direction,
+			speed,
+			maxDistance,
+			radius
 		)
 
 	local ignored: {Instance} = {
 		context.Character,
-		visual,
 	}
 
 	local params =
@@ -338,10 +345,7 @@ local function launchNeedle(
 			connection = nil
 		end
 
-		if hitPosition and hitNormal then
-			LightningSenbonVFX.Impact(hitPosition, hitNormal)
-		end
-		LightningSenbonVFX.Release(visual)
+		ElementalFX.ProjectileEnd(fxId, hitPosition, hitNormal)
 	end
 
 	connection =
@@ -429,24 +433,11 @@ local function launchNeedle(
 				position += displacement
 				travelled += step
 
-				if visual.Parent then
-					visual.CFrame =
-					safeLookAt(
-						position,
-						direction
-					)
-				end
-
 				if travelled >= maxDistance then
 					finish()
 				end
 			end
 		)
-
-	Debris:AddItem(
-		visual,
-		maxDistance / speed + 1
-	)
 end
 
 local function executeSenbon(

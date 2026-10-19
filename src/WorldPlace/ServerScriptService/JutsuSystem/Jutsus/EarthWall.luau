@@ -317,6 +317,13 @@ function EarthWall.SanitizeRequest(
 	}
 end
 
+local ElementalFX = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
+
 local function executeWall(
 	context: any
 )
@@ -470,6 +477,16 @@ local function executeWall(
 	)
 
 	wall.Parent = workspace
+
+	-- VFX: cada cliente oculta este bloque (que sigue dando la colisión) y dibuja
+	-- el muro de rocas que sube y se derrumba (ElementalFX > Earth)
+	ElementalFX.Fire(EarthWall.Id, "Raise", {
+		Wall = wall,
+		CFrame = wall.CFrame,
+		Size = wall.Size,
+		Duration = duration,
+		Caster = context.Character,
+	})
 
 	Debris:AddItem(
 		wall,
