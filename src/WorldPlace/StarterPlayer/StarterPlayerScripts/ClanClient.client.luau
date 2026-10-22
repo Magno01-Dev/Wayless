@@ -920,7 +920,18 @@ local function addEyes(character: Model, kind: string)
 		table.insert(entry.Glows, billboard)
 	end
 
-	local textured = sharingan and hasEyeVariant(Players:GetPlayerFromCharacter(character), "Sharingan")
+	-- FaceHD v2: HD Byakugan already renders its full iris, so do not add
+	-- the legacy white placeholder spheres on top. Keep light/glow/trails.
+	local owner = Players:GetPlayerFromCharacter(character)
+	local textured = sharingan and hasEyeVariant(owner, "Sharingan")
+	if not sharingan and owner then
+		local id = owner:GetAttribute("CharacterBaseEyeStyleId") or owner:GetAttribute("CharacterEyeStyleId")
+		local family = typeof(id) == "string" and string.match(id, "^HD_([MF]%d+)$")
+		if family then
+			local hd = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("FaceHDIntegration"))
+			textured = hd.Image(hd.Path(family, "ojos", "neutral", "byakugan")) ~= nil
+		end
+	end
 	for _, side in { -1, 1 } do
 		if not textured then
 			local eye = newPart(Vector3.new(0.13, 0.13, 0.13), color)

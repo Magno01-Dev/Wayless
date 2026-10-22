@@ -6848,6 +6848,10 @@ m1Request.OnServerEvent:
 					or nil,
 				}
 
+				-- FaceHD v2: only emit after the server accepted M1 Start.
+				-- Replicated timestamp for nearby clients; changes NO combat rules.
+				character:SetAttribute("FaceAttackAt", workspace:GetServerTimeNow())
+
 				scheduleSwingSound(
 					player,
 					sequence,
