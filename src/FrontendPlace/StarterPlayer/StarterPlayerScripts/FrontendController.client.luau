@@ -395,6 +395,8 @@ local selectedBottomColorIndex = 1
 local selectedTopIndex = 1
 local selectedBottomIndex = 1
 local selectedHairAssetIds: {number} = {}
+local selectedHairColorId = "01"
+local creationClanId = ""
 
 local previewModel: Model? = nil
 local previewRefreshRequested = false
@@ -409,6 +411,8 @@ if not sharedModules then
 	warn("[FrontendController] ReplicatedStorage.Shared missing")
 	return
 end
+
+local HairAppearance = require(sharedModules:WaitForChild("HairAppearance"))
 
 -- FRONTEND COMMERCE
 local commerceConfigModule =
@@ -1919,6 +1923,9 @@ local function rebuildPreviewModel(
 	local newModel =
 		modelResult :: Model
 
+	local hairEntry = HairAppearance.ResolveColor(creationClanId, selectedHairColorId)
+	if hairEntry then HairAppearance.TintAvatarHair(newModel, hairEntry.Color) end
+
 	if not hasNativeR6Body(
 		newModel
 		) then
@@ -2278,6 +2285,61 @@ local function requestPreviewRefresh()
 
 		previewRefreshRunning = false
 	end)
+end
+
+-- Hair color controls are added without changing approved Astra HUD geometry.
+-- They occupy the unused area below the four existing Hair ID inputs.
+local hairColorButtons: {TextButton} = {}
+local hairColorTitle = Instance.new("TextLabel")
+hairColorTitle.Name = "HairColorTitle"
+hairColorTitle.Position = UDim2.fromOffset(125, 888)
+hairColorTitle.Size = UDim2.fromOffset(135, 37)
+hairColorTitle.BackgroundTransparency = 1
+hairColorTitle.Text = "Hair Color"
+hairColorTitle.TextColor3 = Color3.fromRGB(65, 52, 45)
+hairColorTitle.Font = Enum.Font.Garamond
+hairColorTitle.TextSize = 22
+hairColorTitle.TextXAlignment = Enum.TextXAlignment.Left
+hairColorTitle.ZIndex = 145
+hairColorTitle.Parent = creationUI.canvas
+
+local function refreshHairColorButtons()
+	local palette = HairAppearance.GetPalette(creationClanId)
+	for i, button in ipairs(hairColorButtons) do
+		local entry = palette[i]
+		if entry then
+			button.BackgroundColor3 = entry.Color
+			button.Text = selectedHairColorId == entry.Id and "✓" or ""
+			button.Visible = true
+			button:SetAttribute("HairColorId", entry.Id)
+		else
+			button.Visible = false
+		end
+	end
+end
+
+for index = 1, 3 do
+	local button = Instance.new("TextButton")
+	button.Name = "HairColor" .. tostring(index)
+	button.Position = UDim2.fromOffset(271 + (index - 1)*86, 892)
+	button.Size = UDim2.fromOffset(74, 33)
+	button.Font = Enum.Font.GothamBold
+	button.TextSize = 20
+	button.TextColor3 = Color3.fromRGB(245, 235, 220)
+	button.TextStrokeTransparency = 0.4
+	button.BorderSizePixel = 1
+	button.BorderColor3 = Color3.fromRGB(119, 101, 79)
+	button.ZIndex = 145
+	button.Parent = creationUI.canvas
+	button.MouseButton1Click:Connect(function()
+		local nextId = button:GetAttribute("HairColorId")
+		if typeof(nextId) == "string" then
+			selectedHairColorId = nextId
+			refreshHairColorButtons()
+			requestPreviewRefresh()
+		end
+	end)
+	table.insert(hairColorButtons, button)
 end
 
 local function rebuildSkinSwatches()
@@ -2783,8 +2845,11 @@ local function openCreation(slotId: string)
 	selectedTopIndex = 1
 	selectedBottomIndex = 1
 	selectedHairAssetIds = {}
+	selectedHairColorId = "01"
 
 	local origin = slot.PermanentOrigin
+	creationClanId = tostring(origin.ClanId or "")
+	refreshHairColorButtons()
 
 	creationUI.info.Text =
 		"Slot "
@@ -3428,6 +3493,10 @@ local function buildSlotPortrait(viewport: ViewportFrame, slotView: any, generat
 	end
 
 	local model = result :: Model
+	local portraitOrigin = slotView.sourceSlot and slotView.sourceSlot.PermanentOrigin
+	local portraitClan = typeof(portraitOrigin) == "table" and tostring(portraitOrigin.ClanId or "") or ""
+	local portraitColor = HairAppearance.ResolveColor(portraitClan, appearance.HairColorId)
+	if portraitColor then HairAppearance.TintAvatarHair(model, portraitColor.Color) end
 	model.Name = "SlotPortrait_" .. tostring(slotView.slotId)
 	setModelPreviewPhysics(model)
 	applyPreviewClassicClothing(model, top, bottom)
@@ -4400,6 +4469,7 @@ creationUI.createButton.MouseButton1Click:Connect(function()
 			RigType = "R6",
 			SkinToneId = skin.Id,
 			HairAssetIds = selectedHairAssetIds,
+			HairColorId = selectedHairColorId,
 			MouthStyleId = mouth.Id,
 			BrowStyleId = brow.Id,
 			NoseStyleId = nose.Id,

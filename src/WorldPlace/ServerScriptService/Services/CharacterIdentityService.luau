@@ -17,6 +17,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local HairAppearance = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("HairAppearance"))
 
 local Services = ServerScriptService:WaitForChild("Services")
 
@@ -1575,6 +1576,15 @@ local function applyAppearance(
 		)
 	end
 
+	local currentSlotId = select(1, currentSummary(player))
+	local persistedSlot = currentSlotId and AccountProfileService.GetSlot(player, currentSlotId)
+	local origin = persistedSlot and persistedSlot.PermanentOrigin
+	local clanId = typeof(origin) == "table" and tostring(origin.ClanId or "") or ""
+	local hairEntry = HairAppearance.ResolveColor(clanId, appearance.HairColorId)
+	if not hairEntry then
+		hairEntry = HairAppearance.ResolveColor(clanId, "01")
+	end
+
 	local hairString =
 		hairIdsToString(
 			appearance.HairAssetIds
@@ -1633,17 +1643,13 @@ local function applyAppearance(
 			sourceResult :: Model
 
 
-		for _, child in ipairs(
-			source:GetChildren()
-			) do
+		for _, child in ipairs(source:GetChildren()) do
 			if child:IsA("Accessory") then
-				humanoid:
-					AddAccessory(
-						child:Clone()
-					)
+				local accessory = child:Clone()
+				HairAppearance.TintAccessory(accessory, hairEntry.Color)
+				humanoid:AddAccessory(accessory)
 			end
 		end
-
 		source:Destroy()
 	else
 		warn(
@@ -2145,6 +2151,7 @@ local function loadPlayer(
 		"CharacterAppearanceHairAssetIds",
 		hairString
 	)
+	player:SetAttribute("CharacterAppearanceHairColorId", appearance.HairColorId or "01")
 
 	local resolvedShoesStyleId =
 		catalog

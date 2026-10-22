@@ -17,6 +17,8 @@ local Services = ServerScriptService:WaitForChild("Services")
 local AccountProfileService =
 	require(Services:WaitForChild("AccountProfileService"))
 
+local HairAppearance = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("HairAppearance"))
+
 local CharacterCreationService = {}
 
 local NAME_MIN = 2
@@ -210,7 +212,8 @@ local function validateHairAssetIds(raw: any): (boolean, string, {number}?)
 end
 
 local function validateAppearance(
-	raw: any
+	raw: any,
+	clanId: string
 ): (boolean, string, {[string]: any}?)
 	if typeof(raw) ~= "table" then
 		return false, "AppearanceMissing", nil
@@ -295,11 +298,17 @@ local function validateAppearance(
 		return false, hairReason, nil
 	end
 
+	local hairColor, colorReason = HairAppearance.ResolveColor(clanId, raw.HairColorId)
+	if not hairColor then
+		return false, colorReason, nil
+	end
+
 	return true, "AppearanceReady", {
 		Version = 8,
 		RigType = "R6",
 		SkinToneId = resolvedSkinToneId,
 		HairAssetIds = hairAssetIds,
+		HairColorId = hairColor.Id,
 		MouthStyleId = mouthStyleId,
 		BrowStyleId = browStyleId,
 		NoseStyleId = noseStyleId,
@@ -410,7 +419,7 @@ function CharacterCreationService.Commit(
 	end
 
 	local appearanceOk, appearanceReason, appearance =
-		validateAppearance(payload.Appearance)
+		validateAppearance(payload.Appearance, tostring(slot.PermanentOrigin.ClanId or ""))
 
 	if not appearanceOk or not appearance then
 		return false, appearanceReason, nil
