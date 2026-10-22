@@ -9,7 +9,6 @@
 -- This service validates the submitted creation payload and commits a new life.
 
 local MarketplaceService = game:GetService("MarketplaceService")
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local TextService = game:GetService("TextService")
@@ -302,29 +301,6 @@ local function validateAppearance(
 	local hairColor, colorReason = HairAppearance.ResolveColor(clanId, raw.HairColorId)
 	if not hairColor then
 		return false, colorReason, nil
-	end
-
-	-- Server-authoritative dimensional validation on the actual R6 accessory
-	-- assembly, before ANY DataStore mutation; no client-supplied sizes accepted.
-	if #hairAssetIds > 0 then
-		local hairDescription = Instance.new("HumanoidDescription")
-		hairDescription.HairAccessory = table.concat(hairAssetIds, ",")
-		local loadedOk, loadedResult = pcall(function()
-			return Players:CreateHumanoidModelFromDescriptionAsync(
-				hairDescription,
-				Enum.HumanoidRigType.R6
-			)
-		end)
-		hairDescription:Destroy()
-		if not loadedOk or typeof(loadedResult) ~= "Instance"
-			or not loadedResult:IsA("Model") then
-			return false, "HairAssetLoadFailed", nil
-		end
-		local sizeOk, sizeReason = HairAppearance.ValidateAvatarHair(loadedResult, #hairAssetIds)
-		loadedResult:Destroy()
-		if not sizeOk then
-			return false, sizeReason, nil
-		end
 	end
 
 	return true, "AppearanceReady", {
