@@ -77,32 +77,51 @@ local jutsuVFXRemote =
 -- VFX TEMPLATE
 ---------------------------------------------------------------------
 
-local vfxRoot =
-	ReplicatedStorage:
-	WaitForChild(
-		"VFX"
-	)
+-- Se busca al usarse, no al cargar el módulo: antes, un WaitForChild aquí
+-- dejaba colgada la carga de TODOS los jutsus si faltaba la plantilla.
+local cachedFlameWaveVFX: Model? =
+	nil
 
-local jutsusVFX =
-	vfxRoot:
-	WaitForChild(
-		"Jutsus"
-	)
+local missingTemplateWarned =
+	false
 
-local fireVFX =
-	jutsusVFX:
-	WaitForChild(
-		"Fire"
-	)
+local function getFlameWaveVFX(): Model?
+	if cachedFlameWaveVFX
+		and cachedFlameWaveVFX.Parent then
 
-local flameWaveVFXInstance =
-	fireVFX:
-	WaitForChild(
-		"FlameWave"
-	)
+		return cachedFlameWaveVFX
+	end
 
-local flameWaveVFX =
-	flameWaveVFXInstance :: Model
+	local vfxRoot =
+		ReplicatedStorage:FindFirstChild("VFX")
+
+	local jutsusVFX =
+		vfxRoot and vfxRoot:FindFirstChild("Jutsus")
+
+	local fireVFX =
+		jutsusVFX and jutsusVFX:FindFirstChild("Fire")
+
+	local template =
+		fireVFX and fireVFX:FindFirstChild("FlameWave")
+
+	if template and template:IsA("Model") then
+		cachedFlameWaveVFX =
+			template
+
+		return template
+	end
+
+	if not missingTemplateWarned then
+		missingTemplateWarned =
+			true
+
+		warn(
+			"[FlameWave] Missing template ReplicatedStorage.VFX.Jutsus.Fire.FlameWave; using fallback hitbox"
+		)
+	end
+
+	return nil
+end
 
 ---------------------------------------------------------------------
 -- MODULE
@@ -825,8 +844,12 @@ local function getVFXHitboxSize(
 	-- VFX BOUNDS DISABLED
 	-----------------------------------------------------------------
 
+	local flameWaveVFX =
+		getFlameWaveVFX()
+
 	if hitboxConfig.UseVFXBounds ==
-		false then
+		false
+		or not flameWaveVFX then
 
 		return Vector3.new(
 			fallbackWidth,

@@ -7,6 +7,7 @@
 -- Wind/Unsteady application through the normal elemental hook.
 -- Placeholder VFX only.
 
+local BarrierTargets = require(game:GetService("ReplicatedStorage"):WaitForChild("Throwables"):WaitForChild("Targets")) -- barreras de llamas negras (Jutsus > BlackWall)
 local RunService = game:GetService("RunService")
 
 local Debris = game:GetService("Debris")
@@ -254,10 +255,13 @@ function WindBlade.SanitizeRequest(
 	}
 end
 
-local WindBladeVFX = require(script:WaitForChild("WindBladeVFX"))
-local function makeBladeVisual(position: Vector3, direction: Vector3): BasePart
-    return WindBladeVFX.Create(position, direction)
-end
+-- VFX: el servidor solo avisa; cada cliente dibuja (ElementalFX > Wind)
+local ElementalFX = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
 
 local function executeBlade(
 	context: any
@@ -314,15 +318,19 @@ local function executeBlade(
 		head.Position
 		+ direction * 2.2
 
-	local visual =
-		makeBladeVisual(
+	local fxId =
+		ElementalFX.Projectile(
+			WindBlade.Id,
+			context.Character,
 			position,
-			direction
+			direction,
+			speed,
+			maxDistance,
+			radius
 		)
 
 	local ignored: {Instance} = {
 		context.Character,
-		visual,
 	}
 
 	local params =
@@ -342,7 +350,7 @@ local function executeBlade(
 	local alive = true
 	local connection: RBXScriptConnection?
 
-	local function finish()
+	local function finish(hitPosition: Vector3?, hitNormal: Vector3?)
 		if not alive then
 			return
 		end
@@ -354,9 +362,7 @@ local function executeBlade(
 			connection = nil
 		end
 
-		if visual.Parent then
-			visual:Destroy()
-		end
+		ElementalFX.ProjectileEnd(fxId, hitPosition, hitNormal)
 	end
 
 	connection =
@@ -394,12 +400,12 @@ local function executeBlade(
 					ignored
 
 					local result =
-					workspace:Spherecast(
+					BarrierTargets.withBarrier(workspace:Spherecast(
 						position,
 						radius,
 						displacement,
 						params
-					)
+					), position, displacement, radius)
 
 					if not result then
 						break
@@ -421,7 +427,7 @@ local function executeBlade(
 							] = true
 
 							hitCount += 1
-							WindBladeVFX.Impact(result.Position, direction, radius * 0.7)
+							ElementalFX.ProjectileHit(fxId, result.Position, -direction)
 
 							context.DamageService.Apply({
 								TargetCharacter =
@@ -473,8 +479,7 @@ local function executeBlade(
 							result.Instance
 						)
 					else
-						WindBladeVFX.Impact(result.Position, result.Normal, radius)
-						finish()
+						if BarrierTargets.consumedBy(result, result.Position, direction) then finish() else finish(result.Position, result.Normal) end
 						return
 					end
 				end
@@ -482,24 +487,11 @@ local function executeBlade(
 				position += displacement
 				travelled += step
 
-				if visual.Parent then
-					visual.CFrame =
-					safeLookAt(
-						position,
-						direction
-					)
-				end
-
 				if travelled >= maxDistance then
 					finish()
 				end
 			end
 		)
-
-	Debris:AddItem(
-		visual,
-		maxDistance / speed + 1
-	)
 end
 
 function WindBlade.OnCastStarted(

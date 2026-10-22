@@ -1,7 +1,11 @@
 --!strict
 -- WAYLESS
--- CharacterDataService v1.4 - Character Life scoped progression
+-- CharacterDataService v1.5 - Character Life scoped progression
 -- Persistent per-player / per-character-slot data.
+--
+-- v1.5 · slot.ClanProgress = { [ClanId] = { Stage, Mastery, … } } (despertar y maestría de
+-- clan, TechniqueKit > Clan). Es de la VIDA actual: se archiva y se reinicia con la vida, igual
+-- que Progression (un wipe por lifeforce lo borra). GetClanProgress / SetClanProgress.
 
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
@@ -34,6 +38,7 @@ type SlotData = {
 	LifeId: string?,
 	CharacterId: string?,
 	ArchivedLives: {[string]: any}?,
+	ClanProgress: {[string]: any}?,
 }
 
 type SessionLock = {
@@ -87,6 +92,7 @@ local function defaultSlot(): SlotData
 		LifeId = nil,
 		CharacterId = nil,
 		ArchivedLives = nil,
+		ClanProgress = nil,
 	}
 end
 
@@ -264,10 +270,17 @@ local function bindSlotToCurrentLife(
 					),
 				ArchivedAt = os.time(),
 				Reason = "NewLifeRejectedLegacySlotData",
+				ClanProgress =
+					deepCopy(
+						slot.ClanProgress
+					),
 			}
 
 			slot.Progression =
 				defaultProgression()
+
+			slot.ClanProgress =
+				nil
 
 			slot.LifeId = lifeId
 			slot.CharacterId = characterId
@@ -296,10 +309,18 @@ local function bindSlotToCurrentLife(
 				),
 			ArchivedAt = os.time(),
 			Reason = "LifeRotation",
+			ClanProgress =
+				deepCopy(
+					slot.ClanProgress
+				),
 		}
 
 		slot.Progression =
 			defaultProgression()
+
+		-- El despertar y la maestría de clan son de la vida: no pasan a la nueva
+		slot.ClanProgress =
+			nil
 
 		slot.LifeId = lifeId
 		slot.CharacterId = characterId
@@ -375,6 +396,32 @@ end
 
 function CharacterDataService.HasDevProgressionOverride(player: Player): boolean
 	return getSession(player).DevProgressionOverride
+end
+
+-- Progreso de clan de la vida actual (copia), o nil si no hay
+function CharacterDataService.GetClanProgress(player: Player, clanId: string): {[string]: any}?
+	local session = sessions[player]
+	if not session or typeof(clanId) ~= "string" or clanId == "" then
+		return nil
+	end
+	local slot = ensureSlot(session.Data, session.ActiveSlotId)
+	local all = slot.ClanProgress
+	local entry = if typeof(all) == "table" then all[clanId] else nil
+	return if typeof(entry) == "table" then deepCopy(entry) else nil
+end
+
+-- Guarda el progreso de un clan en la vida actual (se escribe en el próximo guardado)
+function CharacterDataService.SetClanProgress(player: Player, clanId: string, entry: {[string]: any}): boolean
+	local session = sessions[player]
+	if not session or session.Closing or typeof(clanId) ~= "string" or clanId == "" or typeof(entry) ~= "table" then
+		return false
+	end
+	local slot = ensureSlot(session.Data, session.ActiveSlotId)
+	local all = if typeof(slot.ClanProgress) == "table" then slot.ClanProgress else {}
+	all[clanId] = deepCopy(entry)
+	slot.ClanProgress = all
+	session.Dirty = true
+	return true
 end
 
 function CharacterDataService.LoadPlayer(player: Player, requestedSlotId: string?): (boolean, string?)

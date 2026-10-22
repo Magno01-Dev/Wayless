@@ -88,6 +88,9 @@ type RequirementTable = {
 	OriginVillageIds: {string}?,
 
 	Rogue: boolean?,
+
+	-- Atributos del jugador con un valor exacto ({ MangekyoAttack = "Amaterasu" })
+	PlayerAttributes: {[string]: any}?,
 }
 
 local ORIGIN_REQUIREMENT_KEYS = {
@@ -282,6 +285,25 @@ function CharacterRequirementService.Check(
 						requirements.MaximumLevel,
 				}
 			)
+		end
+	end
+
+	-----------------------------------------------------------------
+	-- PLAYER ATTRIBUTES (p. ej. el tipo de Mangekyō de un Uchiha)
+	-----------------------------------------------------------------
+
+	if typeof(requirements.PlayerAttributes) == "table" then
+		for attribute, required in requirements.PlayerAttributes do
+			if player:GetAttribute(attribute) ~= required then
+				return fail(
+					"AttributeRequired",
+					{
+						Attribute = attribute,
+						Required = required,
+						Current = player:GetAttribute(attribute),
+					}
+				)
+			end
 		end
 	end
 

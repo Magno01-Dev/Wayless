@@ -1806,6 +1806,13 @@ UserInputService.InputBegan:
 				return
 			end
 
+			-- Modo Susanoo: el M1 es el combo del brazo (StarterPlayerScripts > SusanooClient)
+			if character:GetAttribute(
+				"SusanooActive"
+				) == true then
+				return
+			end
+
 			-- AttackController remains the single Mouse1 owner.
 			--
 			-- Priority:

@@ -1,5 +1,5 @@
 --!strict
--- SubstitutionServer v2.6 - Launcher Air Counterplay + Core Cooldown Contract
+-- SubstitutionServer v3.0 - Vanish (invisibility) instead of random teleport
 -- ServerScriptService > SubstitutionServer [Script]
 --
 -- Server-authoritative Naruto-style substitution / replacement.
@@ -8,8 +8,12 @@
 -- The player presses the substitution key to arm a very short dodge window.
 -- If combat damage reaches the shared DownedInternal.ApplyDamage gateway
 -- during that window, the hit is consumed, a log is left at the old position,
--- the existing ExecutionPoofFX smoke/SFX is played, and the player is moved
--- to a random safe nearby position.
+-- the existing ExecutionPoofFX smoke/SFX is played, and the player VANISHES:
+-- a short invisibility (SubstitutionHidden) with a small initial burst (client)
+-- and faster movement (status SubstitutionVanish). Immune to hits for the first
+-- VANISH_IMMUNE seconds; attacking/casting/throwing/dashing (client "Reveal"),
+-- casting a jutsu, getting hit after the immunity or the timer reveals them with
+-- another poof. Clan dojutsu (Sharingan 2+ tomoe, Byakugan) see afterimages.
 --
 -- This module never edits Humanoid locomotion states.
 -- It does not own Sprint / Dash / Jump / SurfaceWalking.
@@ -32,7 +36,12 @@ local SubstitutionService = {}
 local DODGE_WINDOW = 1.00
 
 -- Initial balance value. Exposed here for later tuning.
-local COOLDOWN = 6.0
+local COOLDOWN = 7.0
+
+-- Invisibility after a successful substitution (replaces the old random teleport)
+local VANISH_DURATION = 0.65
+local VANISH_IMMUNE = 0.25 -- first part: the rest of the incoming combo cannot land
+local VANISH_STATUS = "SubstitutionVanish" -- StatusEffectDefinitions: faster movement
 
 -- Random horizontal displacement.
 local TELEPORT_MIN_RADIUS = 10
@@ -1735,6 +1744,99 @@ local function setWindowAttributes(
 	end
 end
 
+-- =========================
+-- VANISH (invisibility after substituting)
+-- =========================
+
+type VanishState = { untilTime: number, immuneUntil: number, token: number }
+local vanish: {[Player]: VanishState} = {}
+local vanishToken = 0
+
+local statusService: any = nil
+local function getStatusService(): any
+	if statusService then
+		return statusService
+	end
+	local ok, result = pcall(function()
+		return require(ServerScriptService:WaitForChild("Services"):WaitForChild("StatusEffectService"))
+	end)
+	if ok then
+		statusService = result
+	end
+	return statusService
+end
+
+local function setHiddenAttributes(character: Model, hiddenUntil: number)
+	character:SetAttribute("SubstitutionHidden", hiddenUntil > 0)
+	character:SetAttribute("SubstitutionHiddenUntil", hiddenUntil)
+end
+
+-- Ends the invisibility (timer, attack, jutsu, hit…) with a poof where they are now
+local function revealPlayer(player: Player, reason: string)
+	local entry = vanish[player]
+	if not entry then
+		return
+	end
+	vanish[player] = nil
+	local character = player.Character
+	if not character then
+		return
+	end
+	setHiddenAttributes(character, 0)
+	local service = getStatusService()
+	if service and typeof(service.Remove) == "function" then
+		pcall(service.Remove, character, VANISH_STATUS)
+	end
+	local root = character:FindFirstChild("HumanoidRootPart")
+	local poofRemote = getPoofRemote()
+	if poofRemote and root and root:IsA("BasePart") then
+		poofRemote:FireAllClients(root.CFrame)
+	end
+	stateRemote:FireAllClients("Revealed", player, reason)
+end
+
+local function startVanish(player: Player, character: Model, attacker: Player?)
+	vanishToken += 1
+	local token = vanishToken
+	local currentTime = now()
+	vanish[player] = {
+		untilTime = currentTime + VANISH_DURATION,
+		immuneUntil = currentTime + VANISH_IMMUNE,
+		token = token,
+	}
+	setHiddenAttributes(character, currentTime + VANISH_DURATION)
+	local service = getStatusService()
+	if service and typeof(service.Apply) == "function" then
+		pcall(service.Apply, character, VANISH_STATUS, {
+			Duration = VANISH_DURATION,
+			SourcePlayer = player,
+			SourceCharacter = character,
+		})
+	end
+	task.delay(VANISH_DURATION, function()
+		local entry = vanish[player]
+		if entry and entry.token == token then
+			revealPlayer(player, "Timer")
+		end
+	end)
+	-- Casting a jutsu reveals (JutsuCasting is set by the server)
+	local connection: RBXScriptConnection
+	connection = character:GetAttributeChangedSignal("JutsuCasting"):Connect(function()
+		local entry = vanish[player]
+		if not entry or entry.token ~= token then
+			connection:Disconnect()
+			return
+		end
+		if character:GetAttribute("JutsuCasting") == true then
+			connection:Disconnect()
+			revealPlayer(player, "Jutsu")
+		end
+	end)
+	task.delay(VANISH_DURATION + 0.1, function()
+		connection:Disconnect()
+	end)
+end
+
 function SubstitutionService.ResetCharacter(
 	player: Player,
 	character: Model
@@ -1745,6 +1847,8 @@ function SubstitutionService.ResetCharacter(
 	state.windowUntil = 0
 	state.generation += 1
 	state.character = character
+	vanish[player] = nil
+	setHiddenAttributes(character, 0)
 
 	-- A true respawn starts with the ability ready.
 	-- This is a per-life combat ability, not a persistent account timer.
@@ -1878,6 +1982,24 @@ function SubstitutionService.TrySubstitute(
 	local state =
 		states[targetPlayer]
 
+	-- Invisible after substituting: immune at first (the hit is absorbed), then a
+	-- hit reveals them and lands normally.
+	local hidden =
+		vanish[targetPlayer]
+
+	if hidden then
+		if hidden.immuneUntil > now() then
+			return true, "VanishImmune"
+		end
+
+		revealPlayer(
+			targetPlayer,
+			"Hit"
+		)
+
+		return false, "Revealed"
+	end
+
 	if not state
 		or state.windowUntil <= now() then
 		return false, "NoWindow"
@@ -1926,27 +2048,6 @@ function SubstitutionService.TrySubstitute(
 		return false, "BecameBusy"
 	end
 
-	local destination =
-		findSafeDestination(
-			character,
-			humanoid,
-			root
-		)
-
-	if not destination then
-		warn(
-			"[Substitution-Server] NO SAFE DESTINATION after ground + air + elevated fail-safe for",
-			targetPlayer.Name,
-			"origin=",
-			root.Position
-		)
-
-		-- Do not consume the active window if absolutely every endpoint failed.
-		-- The warning above makes this condition directly visible in Output.
-		return false,
-			"NoSafeDestination"
-	end
-
 	-- Consume first so simultaneous multi-hit damage cannot trigger several
 	-- teleports from the same window.
 	state.generation += 1
@@ -1978,16 +2079,13 @@ function SubstitutionService.TrySubstitute(
 		)
 	end
 
-	-- Teleport the entire R6 assembly. Do not ChangeState or force Running.
-	character:PivotTo(
-		destination
+	-- No teleport: the player vanishes and moves on their own (client burst +
+	-- faster movement), choosing where and facing where to reappear.
+	startVanish(
+		targetPlayer,
+		character,
+		attacker
 	)
-
-	root.AssemblyLinearVelocity =
-		Vector3.zero
-
-	root.AssemblyAngularVelocity =
-		Vector3.zero
 
 	character:SetAttribute(
 		"LastSubstitutionAt",
@@ -2021,12 +2119,55 @@ function SubstitutionService.TrySubstitute(
 		end
 	end
 
+	-- Aviso interno para otros sistemas del servidor (Clan: Sharingan / Byakugan ven sus
+	-- remanentes mientras está invisible)
+	local combatInternal =
+		ServerStorage:FindFirstChild(
+			"CombatInternal"
+		)
+
+	if not combatInternal then
+		combatInternal =
+			Instance.new("Folder")
+
+		combatInternal.Name =
+			"CombatInternal"
+
+		combatInternal.Parent =
+			ServerStorage
+	end
+
+	local substitutedEvent =
+		combatInternal:FindFirstChild(
+			"Substituted"
+		)
+
+	if not substitutedEvent then
+		substitutedEvent =
+			Instance.new("BindableEvent")
+
+		substitutedEvent.Name =
+			"Substituted"
+
+		substitutedEvent.Parent =
+			combatInternal
+	end
+
+	if substitutedEvent:IsA("BindableEvent") then
+		substitutedEvent:Fire(
+			targetPlayer,
+			attacker,
+			oldCFrame,
+			nil
+		)
+	end
+
 	stateRemote:FireAllClients(
 		"Triggered",
 		targetPlayer,
 		attacker,
 		oldCFrame,
-		destination
+		root.CFrame
 	)
 
 	print(
@@ -2136,6 +2277,17 @@ requestRemote.OnServerEvent:
 			action: any,
 			characterHint: any
 		)
+
+			if action == "Reveal" then
+				if vanish[player] then
+					revealPlayer(
+						player,
+						"Action"
+					)
+				end
+
+				return
+			end
 
 			if action ~= "Arm" then
 				return
@@ -2258,6 +2410,8 @@ Players.PlayerAdded:
 Players.PlayerRemoving:
 	Connect(
 		function(player)
+			vanish[player] = nil
+
 			SubstitutionService.RemovePlayer(
 				player
 			)
@@ -2274,5 +2428,5 @@ for _, player in ipairs(
 end
 
 print(
-	"[Substitution-Server] READY v2.6 LauncherAirCounterplay=ON CoreCooldownContract=ON endpointOnlyTP=ON stairFailSafe=ON physicalLog=ON kunaiCatchVisual=ON window=1.00s cooldown=6.00s"
+	"[Substitution-Server] READY v2.6 LauncherAirCounterplay=ON CoreCooldownContract=ON vanish=0.65s immune=0.25s physicalLog=ON kunaiCatchVisual=ON window=1.00s cooldown=7.00s"
 )

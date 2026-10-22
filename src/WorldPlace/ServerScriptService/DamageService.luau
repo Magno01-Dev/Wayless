@@ -1,5 +1,5 @@
 --!strict
--- DamageService v1.1 - Multiplicative Penetration + Shared Armor Gateway
+-- DamageService v1.4 - Multiplicative Penetration + Shared Armor Gateway + Counter Stance + Chakura Nagashi + Hooks
 -- ServerScriptService > DamageService [ModuleScript]
 --
 -- Future combat damage (M1, projectiles, weapons, jutsus, explosions) should
@@ -20,6 +20,117 @@ local downedInternal = ServerStorage:WaitForChild("DownedInternal")
 local applyDownedDamage = downedInternal:WaitForChild("ApplyDamage") :: BindableFunction
 
 local DamageService = {}
+
+-- v1.2 · Postura de contraataque (taijutsu)
+-- Si el objetivo tiene CounterStanceUntil (tiempo del servidor) vigente y el golpe es cuerpo
+-- a cuerpo, el golpe se esquiva: se devuelve "Substituted" (todos los sistemas ya lo tratan
+-- como "no le diste": sin daño, aturdimiento, combo ni armadura) y se avisa por
+-- ServerStorage > CombatInternal > CounterTriggered(defensor, atacante, tipo).
+local MELEE_SOURCE_TYPES: {[string]: boolean} = {
+	M1 = true,
+	Lunge = true,
+	AerialKick = true,
+	Launcher = true,
+	Taijutsu = true,
+	Kenjutsu = true,
+}
+
+-- v1.3 · Chakura Nagashi (kenjutsu)
+-- Mientras el atacante tenga ChakraFlowElement + ChakraFlowUntil vigentes y el arma
+-- desenvainada, sus golpes con arma (M1 y Kenjutsu) hacen más daño y, si dan en el cuerpo,
+-- aplican el estado elemental canónico de ese elemento.
+local CHAKRA_FLOW_SOURCE_TYPES: {[string]: boolean} = {
+	M1 = true,
+	Kenjutsu = true,
+}
+local CHAKRA_FLOW_DAMAGE_MULTIPLIER = 1.35
+local CHAKRA_FLOW_STATUS: {[string]: string} = {
+	Fire = "Burning",
+	Wind = "Unsteady",
+	Lightning = "Charged",
+	Earth = "Heavy",
+	Water = "Wet",
+}
+
+local statusEffectService: any = nil
+
+local function applyChakraFlowStatus(targetCharacter: Model, attacker: Player, element: string)
+	local statusId = CHAKRA_FLOW_STATUS[element]
+	if not statusId then
+		return
+	end
+	if statusEffectService == nil then
+		local ok, result = pcall(function()
+			return require(game:GetService("ServerScriptService"):WaitForChild("Services"):WaitForChild("StatusEffectService"))
+		end)
+		statusEffectService = if ok then result else false
+	end
+	if statusEffectService then
+		pcall(statusEffectService.Apply, targetCharacter, statusId, {
+			SourcePlayer = attacker,
+			SourceCharacter = attacker.Character,
+		})
+	end
+end
+
+-- v1.4 · Ganchos de daño (pasivas de clan, etc.)
+-- DamageService.AddHook({
+--     ModifyDamage = function(context) -> número (multiplicador del daño base) o nil,
+--     AfterHit = function(context, result) -> (), -- solo si el golpe dio en el cuerpo
+-- })
+-- Se ejecutan protegidos (pcall): un error en un gancho no rompe el daño.
+type DamageHook = {
+	ModifyDamage: ((any) -> number?)?,
+	AfterHit: ((any, string) -> ())?,
+}
+
+local damageHooks: {DamageHook} = {}
+
+function DamageService.AddHook(hook: DamageHook)
+	table.insert(damageHooks, hook)
+end
+
+-- Elemento activo de Chakura Nagashi del atacante para este golpe (o nil)
+local function getChakraFlowElement(context: any): string?
+	local attacker = context.Attacker
+	local attackerCharacter = attacker and attacker.Character
+	if not attackerCharacter
+		or CHAKRA_FLOW_SOURCE_TYPES[context.SourceType or ""] ~= true
+		or attackerCharacter:GetAttribute("WeaponState") ~= "Drawn" then
+		return nil
+	end
+	local element = attackerCharacter:GetAttribute("ChakraFlowElement")
+	local untilTime = attackerCharacter:GetAttribute("ChakraFlowUntil")
+	if typeof(element) ~= "string" or typeof(untilTime) ~= "number"
+		or workspace:GetServerTimeNow() > untilTime then
+		return nil
+	end
+	return element
+end
+
+local counterTriggered: BindableEvent? = nil
+
+local function getCounterTriggered(): BindableEvent
+	if counterTriggered and counterTriggered.Parent then
+		return counterTriggered
+	end
+	local folder = ServerStorage:FindFirstChild("CombatInternal")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "CombatInternal"
+		folder.Parent = ServerStorage
+	end
+	local found = folder:FindFirstChild("CounterTriggered")
+	if not found then
+		found = Instance.new("BindableEvent")
+		found.Name = "CounterTriggered"
+		found.Parent = folder
+	end
+	counterTriggered = found :: BindableEvent
+	return counterTriggered :: BindableEvent
+end
+
+task.spawn(getCounterTriggered)
 
 export type ArmorProfile = {
 	Penetration: number?,
@@ -234,6 +345,49 @@ function DamageService.Apply(context: DamageContext): DamageResolution
 		}
 	end
 
+	-- Postura de contraataque: esquiva el golpe cuerpo a cuerpo y avisa (una vez)
+	if context.Attacker
+		and MELEE_SOURCE_TYPES[context.SourceType or ""] == true then
+
+		local stanceUntil = targetCharacter:GetAttribute("CounterStanceUntil")
+
+		if typeof(stanceUntil) == "number"
+			and workspace:GetServerTimeNow() <= stanceUntil then
+
+			targetCharacter:SetAttribute("CounterStanceUntil", nil)
+			getCounterTriggered():Fire(targetCharacter, context.Attacker, context.SourceType)
+
+			return {
+				Result = "Substituted",
+				BaseDamage = baseDamage,
+				FinalDamage = 0,
+				AbsorbedDamage = 0,
+				DurabilityDamage = 0,
+				ArmorApplied = false,
+				ArmorCondition = 0,
+				ArmorResistance = 0,
+				EffectiveResistance = 0,
+				Penetration = 0,
+				SourceType = context.SourceType or "Unknown",
+				SourceId = context.SourceId or "",
+			}
+		end
+	end
+
+	local chakraFlowElement = getChakraFlowElement(context)
+	if chakraFlowElement then
+		baseDamage *= CHAKRA_FLOW_DAMAGE_MULTIPLIER
+	end
+
+	for _, hook in damageHooks do
+		if hook.ModifyDamage then
+			local ok, multiplier = pcall(hook.ModifyDamage, context)
+			if ok and typeof(multiplier) == "number" and multiplier >= 0 then
+				baseDamage *= multiplier
+			end
+		end
+	end
+
 	local finalDamage,
 		absorbedDamage,
 		provisionalDurabilityDamage,
@@ -270,6 +424,23 @@ function DamageService.Apply(context: DamageContext): DamageResolution
 	if armorApplied and shouldCommitArmorDamage(result, targetPlayer) then
 		committedDurabilityDamage = provisionalDurabilityDamage
 		commitArmorDurabilityDamage(targetCharacter, committedDurabilityDamage)
+	end
+
+	-- Chakura Nagashi: el golpe que da en el cuerpo aplica el estado de su elemento
+	if chakraFlowElement and context.Attacker
+		and (BODY_HIT_RESULTS[result] == true or result == "DamagedNPC") then
+		applyChakraFlowStatus(targetCharacter, context.Attacker, chakraFlowElement)
+	end
+
+	if BODY_HIT_RESULTS[result] == true or result == "DamagedNPC" then
+		for _, hook in damageHooks do
+			if hook.AfterHit then
+				local ok, err = pcall(hook.AfterHit, context, result)
+				if not ok then
+					warn("[DamageService] AfterHit hook error:", err)
+				end
+			end
+		end
 	end
 
 	return {

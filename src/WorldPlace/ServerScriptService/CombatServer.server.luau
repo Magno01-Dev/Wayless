@@ -1,6 +1,15 @@
 --!strict
--- CombatServer v24.19 - WeaponProfile M1 Integration + StatusCombatModifiers
+-- CombatServer v24.21 - WeaponProfile M1 Integration + StatusCombatModifiers
 -- ServerScriptService > CombatServer
+--
+-- v24.21 (kenjutsu):
+-- - ExternalMeleeHit acepta spec.SourceType ("Kenjutsu"); por defecto "Taijutsu".
+-- - Al bloquear un golpe, el defensor recibe el atributo LastBlockedAt (tiempo del servidor).
+--
+-- v24.20 (taijutsu):
+-- - ServerStorage > CombatInternal > ExternalMeleeHit / ApplyStun: API para que las
+--   técnicas de taijutsu golpeen con las mismas reglas (bloqueo, guardia, combo, VFX).
+-- - beginM1_5Ragdoll acepta velocidades/duración opcionales (barrida, Dynamic Entry).
 --
 -- Built directly from uploaded v20.2 stable source.
 --
@@ -1551,17 +1560,36 @@ local function stopM1HitReactionForRagdoll(
 end
 
 
+-- overrides (opcional, para técnicas de taijutsu vía ExternalMeleeHit):
+--   { Horizontal = velocidad horizontal, Vertical = velocidad vertical, Duration = segundos }
+-- Sin overrides se usan los valores del M1_5.
 local function beginM1_5Ragdoll(
 	targetCharacter: Model,
 	targetHumanoid: Humanoid,
 	targetRoot: BasePart,
 	defenderPlayer: Player?,
-	knockbackDirection: Vector3
+	knockbackDirection: Vector3,
+	overrides: any?
 )
 
 	if targetHumanoid.Health <= 0 then
 		return
 	end
+
+	local ragdollHorizontalSpeed =
+		if overrides and typeof(overrides.Horizontal) == "number"
+		then overrides.Horizontal
+		else M1_5_KNOCKBACK_HORIZONTAL_SPEED
+
+	local ragdollVerticalSpeed =
+		if overrides and typeof(overrides.Vertical) == "number"
+		then overrides.Vertical
+		else M1_5_KNOCKBACK_VERTICAL_SPEED
+
+	local ragdollDuration =
+		if overrides and typeof(overrides.Duration) == "number"
+		then overrides.Duration
+		else M1_5_RAGDOLL_DURATION
 
 	local healthBeforeRagdoll =
 		targetHumanoid.Health
@@ -1741,18 +1769,18 @@ local function beginM1_5Ragdoll(
 	targetRoot.AssemblyLinearVelocity =
 		Vector3.new(
 			knockbackDirection.X
-			* M1_5_KNOCKBACK_HORIZONTAL_SPEED
+			* ragdollHorizontalSpeed
 			* knockbackReceivedMultiplier,
 
 			math.max(
 				currentVelocity.Y,
 				0
 			)
-			+ M1_5_KNOCKBACK_VERTICAL_SPEED
+			+ ragdollVerticalSpeed
 			* knockbackReceivedMultiplier,
 
 			knockbackDirection.Z
-			* M1_5_KNOCKBACK_HORIZONTAL_SPEED
+			* ragdollHorizontalSpeed
 			* knockbackReceivedMultiplier
 		)
 
@@ -1782,7 +1810,7 @@ local function beginM1_5Ragdoll(
 
 
 	task.delay(
-		M1_5_RAGDOLL_DURATION,
+		ragdollDuration,
 		function()
 
 			if not targetCharacter.Parent then
@@ -2289,6 +2317,8 @@ local function breakGuard(
 	defenderPlayer
 	] = nil
 
+	targetCharacter:SetAttribute("BlockStartedAt", nil)
+
 	replicateGuardState(
 		defenderPlayer,
 		state
@@ -2351,6 +2381,12 @@ local function applyGuardDamage(
 		workspace:
 		GetServerTimeNow()
 
+	-- v24.21: Iai (kenjutsu) contraataca si se usa justo después de bloquear
+	targetCharacter:SetAttribute(
+		"LastBlockedAt",
+		state.lastDamageAt
+	)
+
 	state.value =
 		math.max(
 			0,
@@ -2412,6 +2448,11 @@ local function applyDirectGuardDamage(
 
 	state.lastDamageAt =
 		workspace:GetServerTimeNow()
+
+	targetCharacter:SetAttribute(
+		"LastBlockedAt",
+		state.lastDamageAt
+	)
 
 	state.value =
 		math.max(
@@ -2551,6 +2592,22 @@ RunService.Heartbeat:Connect(
 -- BLOCK TEST
 -- =========================
 
+-- Aviso de bloqueo logrado (CombatInternal > MeleeBlocked, ver la API externa al final)
+local function notifyMeleeBlocked(
+	guardWasBroken: boolean,
+	defenderPlayer: Player?,
+	attackerPlayer: Player?
+)
+	if guardWasBroken or not defenderPlayer or not attackerPlayer then
+		return
+	end
+	local folder = game:GetService("ServerStorage"):FindFirstChild("CombatInternal")
+	local event = folder and folder:FindFirstChild("MeleeBlocked")
+	if event and event:IsA("BindableEvent") then
+		event:Fire(defenderPlayer, attackerPlayer)
+	end
+end
+
 local function isBlockingAttack(
 	defenderPlayer: Player?,
 	defenderRoot: BasePart,
@@ -2584,6 +2641,12 @@ local function isBlockingAttack(
 		or not blockState.active then
 
 		return false
+	end
+
+	-- Mangekyō activo: las costillas del Susanoo cubren el bloqueo en 360°
+	if defenderCharacter
+		and defenderCharacter:GetAttribute("MangekyoActive") == true then
+		return true
 	end
 
 	local defenderFrame =
@@ -3259,6 +3322,8 @@ local function processM1Candidate(
 			end
 		end
 
+
+		notifyMeleeBlocked(guardWasBroken, defenderPlayer, attackerPlayer)
 
 		emitCombatImpactVFX(
 			guardWasBroken
@@ -4013,6 +4078,8 @@ local function processLungeCandidate(
 				blockImpact:FireClient(defenderPlayer)
 			end
 		end
+
+		notifyMeleeBlocked(guardWasBroken, defenderPlayer, attackerPlayer)
 
 		emitCombatImpactVFX(
 			guardWasBroken and "GuardBreak" or "Block",
@@ -4990,6 +5057,8 @@ local function applyAerialKickTargetHit(
 			end
 		end
 
+		notifyMeleeBlocked(guardWasBroken, defenderPlayer, player)
+
 		emitCombatImpactVFX(
 			guardWasBroken
 				and "GuardBreak"
@@ -5720,6 +5789,12 @@ blockRequest.OnServerEvent:
 					startedAt = time(),
 				}
 
+				-- Server time the block started (perfect-block windows, e.g. Genjutsu Kaeshi)
+				character:SetAttribute(
+					"BlockStartedAt",
+					workspace:GetServerTimeNow()
+				)
+
 				if DEBUG_M1 then
 					print(
 						"[Block-Server] Start",
@@ -5732,6 +5807,13 @@ blockRequest.OnServerEvent:
 				blockStates[
 				player
 				] = nil
+
+				if player.Character then
+					player.Character:SetAttribute(
+						"BlockStartedAt",
+						nil
+					)
+				end
 
 				if DEBUG_M1 then
 					print(
@@ -6666,6 +6748,13 @@ m1Request.OnServerEvent:
 					return
 				end
 
+				if character:GetAttribute(
+					"SusanooActive"
+					) == true then
+
+					return
+				end
+
 				if isDownedSystemLocked(
 					character
 					) then
@@ -7118,6 +7207,8 @@ local function initializeCombatCharacter(
 			player
 			] = nil
 
+			character:SetAttribute("BlockStartedAt", nil)
+
 			clearLungeState(player)
 			clearAerialKickState(player)
 		end
@@ -7241,6 +7332,501 @@ Players.PlayerAdded:
 			)
 		end
 	)
+
+
+-- =========================
+-- EXTERNAL MELEE API (taijutsu)
+-- =========================
+--
+-- ServerStorage > CombatInternal
+--   ExternalMeleeHit (BindableFunction)
+--     Invoke(attackerPlayer, targetCharacter, spec) -> resultado
+--     spec = {
+--       Damage, SourceId, Armor?,
+--       GuardDamage?      daño a la guardia si bloquea (25 por defecto)
+--       Unblockable?      ignora el bloqueo
+--       Hitstun?          aturdimiento (0.40 por defecto, como un M1)
+--       Knockback?        empuje horizontal sin ragdoll
+--       BlockedKnockback? empuje si lo bloquean
+--       Ragdoll?          true o { Horizontal, Vertical, Duration }: tumba como el M1_5
+--       Heavy?            sonido y VFX de golpe fuerte
+--       ComboNumber?      para elegir el VFX de impacto (3 por defecto)
+--     }
+--     resultado: "Blocked" | "GuardBreak" | "Invalid" | resultado de DamageService
+--   MeleeBlocked (BindableEvent)
+--     Fire(defenderPlayer, attackerPlayer) cuando un golpe cuerpo a cuerpo (M1, carrera, patada
+--     aérea o ExternalMeleeHit) se bloquea sin romper la guardia. Lo usa el escudo del Susanoo
+--     (SusanooServer) para contraatacar.
+--   ApplyStun (BindableFunction)
+--     Invoke(character, duration, playReaction?) -> true
+--   ExternalBlockHit (BindableFunction)
+--     Invoke(attackerPlayer, targetCharacter, guardDamage?) -> "NotBlocked" | "Blocked" | "GuardBreak"
+--     Para jutsus que se pueden bloquear (Enton: Black Spear): mismas reglas de bloqueo que el
+--     cuerpo a cuerpo (de frente; 360° con el Mangekyō). Si lo bloquea: daño a la guardia, sonido y
+--     VFX de bloqueo. El daño lo resuelve el jutsu (si no se bloqueó o si rompió la guardia).
+--   ExternalKnockback (BindableFunction)
+--     Invoke(targetCharacter, direction, horizontalSpeed) -> boolean
+--     Empuje sin ragdoll en una dirección dada (proyectiles que giran: Yasaka no Magatama), con
+--     los mismos modificadores y la misma propiedad de red que el empuje de la patada aérea.
+--
+-- Mismas reglas que la patada aérea: bloqueo frontal y guardia, sustitución, Downed,
+-- contador de combo y VFX de impacto confirmados por el servidor.
+
+local ServerStorage =
+	game:GetService("ServerStorage")
+
+local combatInternal =
+	ServerStorage:FindFirstChild("CombatInternal")
+
+if not combatInternal then
+	combatInternal = Instance.new("Folder")
+	combatInternal.Name = "CombatInternal"
+	combatInternal.Parent = ServerStorage
+end
+
+local function getInternalFunction(
+	name: string
+): BindableFunction
+	local existing =
+		(combatInternal :: Folder):FindFirstChild(name)
+
+	if existing and existing:IsA("BindableFunction") then
+		return existing
+	end
+
+	local created =
+		Instance.new("BindableFunction")
+
+	created.Name = name
+	created.Parent = combatInternal
+	return created
+end
+
+local externalMeleeHit =
+	getInternalFunction("ExternalMeleeHit")
+
+local externalApplyStun =
+	getInternalFunction("ApplyStun")
+
+if not (combatInternal :: Folder):FindFirstChild("MeleeBlocked") then
+	local meleeBlocked = Instance.new("BindableEvent")
+	meleeBlocked.Name = "MeleeBlocked"
+	meleeBlocked.Parent = combatInternal
+end
+
+externalMeleeHit.OnInvoke = function(
+	attackerPlayer: Player,
+	targetCharacter: Model,
+	spec: any
+): string
+
+	if typeof(attackerPlayer) ~= "Instance"
+		or not attackerPlayer:IsA("Player")
+		or typeof(targetCharacter) ~= "Instance"
+		or not targetCharacter:IsA("Model")
+		or typeof(spec) ~= "table" then
+
+		return "Invalid"
+	end
+
+	local attackerCharacter,
+		_attackerHumanoid,
+		attackerRoot =
+		getAliveCharacter(
+			attackerPlayer
+		)
+
+	if not attackerCharacter
+		or not attackerRoot
+		or targetCharacter == attackerCharacter then
+
+		return "Invalid"
+	end
+
+	local targetHumanoid =
+		targetCharacter:FindFirstChildOfClass("Humanoid")
+
+	local targetRoot =
+		targetCharacter:FindFirstChild("HumanoidRootPart")
+
+	if not targetHumanoid
+		or targetHumanoid.Health <= 0
+		or not targetRoot
+		or not targetRoot:IsA("BasePart")
+		or not canReceiveM1Hit(targetCharacter) then
+
+		return "Invalid"
+	end
+
+	local defenderPlayer =
+		Players:GetPlayerFromCharacter(targetCharacter)
+
+	local comboNumber =
+		if typeof(spec.ComboNumber) == "number"
+		then spec.ComboNumber
+		else 3
+
+	-- Bloqueo
+	if spec.Unblockable ~= true
+		and isBlockingAttack(
+			defenderPlayer,
+			targetRoot,
+			attackerRoot,
+			nil,
+			nil
+		) then
+
+		local guardWasBroken = false
+
+		if defenderPlayer then
+			guardWasBroken =
+				applyDirectGuardDamage(
+					defenderPlayer,
+					targetCharacter,
+					targetRoot,
+					if typeof(spec.GuardDamage) == "number"
+					then spec.GuardDamage
+					else 25
+				)
+		end
+
+		if not guardWasBroken then
+			playCombatSound(
+				targetRoot,
+				BLOCK_IMPACT_SOUND_ID,
+				BLOCK_IMPACT_SOUND_VOLUME,
+				0.92
+			)
+
+			if defenderPlayer then
+				blockImpact:FireClient(defenderPlayer)
+			end
+		end
+
+		notifyMeleeBlocked(guardWasBroken, defenderPlayer, attackerPlayer)
+
+		emitCombatImpactVFX(
+			guardWasBroken and "GuardBreak" or "Block",
+			attackerPlayer,
+			defenderPlayer,
+			attackerRoot,
+			targetRoot,
+			comboNumber
+		)
+
+		if typeof(spec.BlockedKnockback) == "number"
+			and spec.BlockedKnockback > 0 then
+
+			applyAerialKickKnockback(
+				attackerCharacter,
+				attackerRoot,
+				targetCharacter,
+				targetHumanoid,
+				targetRoot,
+				defenderPlayer,
+				spec.BlockedKnockback
+			)
+		end
+
+		return guardWasBroken and "GuardBreak" or "Blocked"
+	end
+
+	-- Golpe
+	local damageResolution =
+		DamageService.Apply({
+			TargetCharacter = targetCharacter,
+			TargetHumanoid = targetHumanoid,
+			TargetPlayer = defenderPlayer,
+			Attacker = attackerPlayer,
+			Damage = if typeof(spec.Damage) == "number" then spec.Damage else 0,
+			SourceType = if typeof(spec.SourceType) == "string" then spec.SourceType else "Taijutsu",
+			SourceId = if typeof(spec.SourceId) == "string" then spec.SourceId else "Taijutsu",
+			Armor = spec.Armor or M1_ARMOR_PROFILE,
+		})
+
+	local damageResult =
+		damageResolution.Result
+
+	local wasSubstituted =
+		damageResult == "Substituted"
+
+	local targetRemainsStanding =
+		not wasSubstituted
+		and damageResult ~= "Downed"
+		and damageResult ~= "AlreadyDowned"
+		and damageResult ~= "BeingExecuted"
+		and targetHumanoid.Health > 0
+
+	if targetRemainsStanding then
+		if spec.Ragdoll then
+			local overrides =
+				if typeof(spec.Ragdoll) == "table"
+				then spec.Ragdoll
+				else nil
+
+			local duration =
+				if overrides and typeof(overrides.Duration) == "number"
+				then overrides.Duration
+				else M1_5_RAGDOLL_DURATION
+
+			applyStun(
+				targetCharacter,
+				duration + 0.10,
+				false
+			)
+
+			local direction =
+				getM1_5KnockbackDirection(
+					attackerCharacter,
+					attackerRoot,
+					targetRoot
+				)
+
+			if direction then
+				beginM1_5Ragdoll(
+					targetCharacter,
+					targetHumanoid,
+					targetRoot,
+					defenderPlayer,
+					direction,
+					overrides
+				)
+			end
+		else
+			applyStun(
+				targetCharacter,
+				if typeof(spec.Hitstun) == "number"
+					then spec.Hitstun
+					else M1_HITSTUN_DURATION,
+				true
+			)
+
+			if typeof(spec.Knockback) == "number"
+				and spec.Knockback > 0 then
+
+				applyAerialKickKnockback(
+					attackerCharacter,
+					attackerRoot,
+					targetCharacter,
+					targetHumanoid,
+					targetRoot,
+					defenderPlayer,
+					spec.Knockback
+				)
+			end
+		end
+	end
+
+	if not wasSubstituted
+		and damageResult ~= "AlreadyDowned"
+		and damageResult ~= "BeingExecuted" then
+
+		ComboCounterService.RecordHit(
+			attackerPlayer,
+			targetCharacter,
+			if typeof(spec.SourceType) == "string" then spec.SourceType else "Taijutsu",
+			if typeof(spec.SourceId) == "string" then spec.SourceId else "Taijutsu"
+		)
+	end
+
+	if not wasSubstituted then
+		playCombatSound(
+			targetRoot,
+			M1_HIT_SOUND_ID,
+			if spec.Heavy then HIT_SOUND_VOLUME * 1.14 else HIT_SOUND_VOLUME,
+			if spec.Heavy then 0.86 else 1.0
+		)
+
+		emitCombatImpactVFX(
+			if spec.Heavy then "HeavyHit" else "Hit",
+			attackerPlayer,
+			defenderPlayer,
+			attackerRoot,
+			targetRoot,
+			if spec.Heavy then 5 else comboNumber
+		)
+	end
+
+	return damageResult
+end
+
+externalApplyStun.OnInvoke = function(
+	character: Model,
+	duration: number,
+	playReaction: boolean?
+): boolean
+
+	if typeof(character) ~= "Instance"
+		or not character:IsA("Model")
+		or typeof(duration) ~= "number" then
+
+		return false
+	end
+
+	applyStun(
+		character,
+		duration,
+		playReaction == true
+	)
+
+	return true
+end
+
+local externalKnockback =
+	getInternalFunction("ExternalKnockback")
+
+externalKnockback.OnInvoke = function(
+	targetCharacter: Model,
+	direction: Vector3,
+	horizontalSpeed: number
+): boolean
+
+	if typeof(targetCharacter) ~= "Instance"
+		or not targetCharacter:IsA("Model")
+		or typeof(direction) ~= "Vector3"
+		or typeof(horizontalSpeed) ~= "number" then
+
+		return false
+	end
+
+	local targetHumanoid =
+		targetCharacter:FindFirstChildOfClass("Humanoid")
+
+	local targetRoot =
+		targetCharacter:FindFirstChild("HumanoidRootPart")
+
+	if not targetHumanoid
+		or targetHumanoid.Health <= 0
+		or not targetRoot
+		or not targetRoot:IsA("BasePart") then
+
+		return false
+	end
+
+	local flat =
+		Vector3.new(direction.X, 0, direction.Z)
+
+	if flat.Magnitude < 0.01 then
+		return false
+	end
+
+	flat = flat.Unit
+
+	pcall(
+		function()
+			targetRoot:SetNetworkOwner(
+				nil
+			)
+		end
+	)
+
+	local finalHorizontalSpeed =
+		horizontalSpeed
+		* StatusCombatModifierService
+		.GetKnockbackReceivedMultiplier(
+			targetCharacter
+		)
+
+	targetRoot.AssemblyLinearVelocity =
+		Vector3.new(
+			flat.X * finalHorizontalSpeed,
+			math.min(
+				targetRoot.AssemblyLinearVelocity.Y,
+				AERIAL_KICK_KNOCKBACK_VERTICAL_SPEED
+			),
+			flat.Z * finalHorizontalSpeed
+		)
+
+	targetRoot.AssemblyAngularVelocity =
+		Vector3.zero
+
+	restoreKickTargetNetworkOwner(
+		targetRoot,
+		Players:GetPlayerFromCharacter(targetCharacter),
+		targetCharacter,
+		0.24
+	)
+
+	return true
+end
+
+local externalBlockHit =
+	getInternalFunction("ExternalBlockHit")
+
+externalBlockHit.OnInvoke = function(
+	attackerPlayer: Player,
+	targetCharacter: Model,
+	guardDamage: number?
+): string
+
+	if typeof(attackerPlayer) ~= "Instance"
+		or not attackerPlayer:IsA("Player")
+		or typeof(targetCharacter) ~= "Instance"
+		or not targetCharacter:IsA("Model") then
+
+		return "NotBlocked"
+	end
+
+	local _attackerCharacter,
+		_attackerHumanoid,
+		attackerRoot =
+		getAliveCharacter(
+			attackerPlayer
+		)
+
+	local defenderPlayer =
+		Players:GetPlayerFromCharacter(targetCharacter)
+
+	local targetRoot =
+		targetCharacter:FindFirstChild("HumanoidRootPart")
+
+	if not attackerRoot
+		or not defenderPlayer
+		or not targetRoot
+		or not targetRoot:IsA("BasePart")
+		or not isBlockingAttack(
+			defenderPlayer,
+			targetRoot,
+			attackerRoot,
+			nil,
+			nil
+		) then
+
+		return "NotBlocked"
+	end
+
+	local guardWasBroken =
+		applyDirectGuardDamage(
+			defenderPlayer,
+			targetCharacter,
+			targetRoot,
+			if typeof(guardDamage) == "number"
+			then guardDamage
+			else 25
+		)
+
+	if not guardWasBroken then
+		playCombatSound(
+			targetRoot,
+			BLOCK_IMPACT_SOUND_ID,
+			BLOCK_IMPACT_SOUND_VOLUME,
+			0.92
+		)
+
+		blockImpact:FireClient(defenderPlayer)
+	end
+
+	emitCombatImpactVFX(
+		if guardWasBroken then "GuardBreak" else "Block",
+		attackerPlayer,
+		defenderPlayer,
+		attackerRoot,
+		targetRoot,
+		3
+	)
+
+	return if guardWasBroken then "GuardBreak" else "Blocked"
+end
 
 
 for _, player in ipairs(

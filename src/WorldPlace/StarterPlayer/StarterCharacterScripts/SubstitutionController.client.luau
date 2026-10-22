@@ -75,6 +75,23 @@ local SUBSTITUTION_KEY =
 local DEBUG =
 	false
 
+-- Invisibilidad tras sustituirte (la decide el servidor: SubstitutionHidden).
+-- Al empezar, un impulso corto para salir del combo: hacia donde te mueves o, si
+-- no te mueves, lejos de quien te atacó.
+local BURST_SPEED =
+	60
+
+local BURST_TIME =
+	0.12
+
+-- Hacer algo de esto mientras eres invisible te hace visible (el servidor no ve
+-- estos atributos: los pone este cliente)
+local REVEAL_ATTRIBUTES = {
+	"IsAttacking",
+	"IsThrowing",
+	"IsDashing",
+}
+
 -- =========================
 -- LOCAL-ONLY TEST INDICATOR
 -- =========================
@@ -406,6 +423,155 @@ UserInputService.InputBegan:
 -- SERVER FEEDBACK
 -- =========================
 
+-- =========================
+-- VANISH (invisible tras sustituirte)
+-- =========================
+
+local function horizontal(vector: Vector3): Vector3
+	local flat =
+		Vector3.new(vector.X, 0, vector.Z)
+
+	return if flat.Magnitude > 1e-3
+		then flat.Unit
+		else Vector3.zero
+end
+
+local function burstAway(attacker: any)
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		) :: BasePart?
+
+	if not root then
+		return
+	end
+
+	local direction =
+		horizontal(humanoid.MoveDirection)
+
+	if direction.Magnitude < 0.1
+		and typeof(attacker) == "Instance"
+		and attacker:IsA("Player")
+		and attacker.Character then
+
+		local attackerRoot =
+			attacker.Character:FindFirstChild(
+				"HumanoidRootPart"
+			) :: BasePart?
+
+		if attackerRoot then
+			direction =
+				horizontal(root.Position - attackerRoot.Position)
+		end
+	end
+
+	if direction.Magnitude < 0.1 then
+		direction =
+			horizontal(-root.CFrame.LookVector)
+	end
+
+	if direction.Magnitude < 0.1 then
+		return
+	end
+
+	local attachment =
+		Instance.new("Attachment")
+
+	attachment.Name =
+		"SubstitutionBurst"
+
+	attachment.Parent =
+		root
+
+	-- Solo en horizontal: la gravedad sigue igual
+	local mover =
+		Instance.new("LinearVelocity")
+
+	mover.Attachment0 =
+		attachment
+
+	mover.RelativeTo =
+		Enum.ActuatorRelativeTo.World
+
+	mover.VelocityConstraintMode =
+		Enum.VelocityConstraintMode.Plane
+
+	mover.PrimaryTangentAxis =
+		Vector3.xAxis
+
+	mover.SecondaryTangentAxis =
+		Vector3.zAxis
+
+	mover.PlaneVelocity =
+		Vector2.new(
+			direction.X * BURST_SPEED,
+			direction.Z * BURST_SPEED
+		)
+
+	mover.MaxForce =
+		math.huge
+
+	mover.Parent =
+		root
+
+	task.delay(
+		BURST_TIME,
+		function()
+			mover:Destroy()
+			attachment:Destroy()
+		end
+	)
+end
+
+local revealSent =
+	false
+
+local function requestReveal()
+	if revealSent
+		or character:GetAttribute(
+			"SubstitutionHidden"
+		) ~= true then
+		return
+	end
+
+	revealSent =
+		true
+
+	requestRemote:FireServer(
+		"Reveal",
+		character
+	)
+end
+
+for _, attributeName in REVEAL_ATTRIBUTES do
+	character:GetAttributeChangedSignal(
+		attributeName
+	):Connect(
+		function()
+			if character:GetAttribute(
+				attributeName
+				) == true then
+
+				requestReveal()
+			end
+		end
+	)
+end
+
+character:GetAttributeChangedSignal(
+	"SubstitutionHidden"
+):Connect(
+	function()
+		if character:GetAttribute(
+			"SubstitutionHidden"
+			) ~= true then
+
+			revealSent =
+				false
+		end
+	end
+)
+
 stateRemote.OnClientEvent:
 	Connect(
 		function(
@@ -413,6 +579,12 @@ stateRemote.OnClientEvent:
 			arg1: any,
 			arg2: any
 		)
+
+			if action == "Triggered"
+				and arg1 == player then
+
+				burstAway(arg2)
+			end
 
 			if not DEBUG then
 				return

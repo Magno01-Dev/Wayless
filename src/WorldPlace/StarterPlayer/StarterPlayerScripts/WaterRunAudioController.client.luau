@@ -147,6 +147,12 @@ local function observeCharacter(player: Player, character: Model)
 	observers[player] = observer
 
 	local function onFootContact(leg: BasePart)
+		-- Invisible tras la sustitución (otro jugador): sin sonido de pasos en el agua
+		if character:GetAttribute("SubstitutionHidden") == true
+			and character ~= Players.LocalPlayer.Character then
+			return
+		end
+
 		if humanoid.Health <= 0 then
 			return
 		end

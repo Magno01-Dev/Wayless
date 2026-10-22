@@ -30,7 +30,7 @@ ClanDefinitions.ById = {
 		DisplayName = "Uchiha",
 		Archetype = "ReactiveDuelist",
 		Summary = "Duelista reactivo, lectura, predicción, Sharingan y counterplay.",
-		GameplayReady = false,
+		GameplayReady = true, -- Sharingan 1-3 tomoe, Mangekyō, Susanoo
 	},
 
 	Hyuga = {
@@ -38,7 +38,7 @@ ClanDefinitions.ById = {
 		DisplayName = "Hyūga",
 		Archetype = "PrecisionSuppressor",
 		Summary = "Precisión, Byakugan, Gentle Fist y supresión de chakra.",
-		GameplayReady = false,
+		GameplayReady = true, -- Byakugan y pasiva Jūken (etapa 1)
 	},
 
 	Nara = {
@@ -46,7 +46,7 @@ ClanDefinitions.ById = {
 		DisplayName = "Nara",
 		Archetype = "TacticalController",
 		Summary = "Control, setups, sombras y castigo táctico.",
-		GameplayReady = false,
+		GameplayReady = true, -- Kagemane (etapa 1)
 	},
 
 	Akimichi = {
@@ -86,7 +86,7 @@ ClanDefinitions.ById = {
 		DisplayName = "Uzumaki",
 		Archetype = "SealingSustain",
 		Summary = "Sealing, sustain, anti-ability, Seal Marks y Strong Life Force.",
-		GameplayReady = false,
+		GameplayReady = true, -- Fūin: marcas de sello (etapa 1)
 	},
 }
 

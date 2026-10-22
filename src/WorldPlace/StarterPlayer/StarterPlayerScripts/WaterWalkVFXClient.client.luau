@@ -1664,6 +1664,12 @@ local function setupCharacter(
 		leg: BasePart
 	): boolean
 
+		-- Invisible tras la sustitución (otro jugador): sin salpicaduras que lo delaten
+		if character:GetAttribute("SubstitutionHidden") == true
+			and character ~= game:GetService("Players").LocalPlayer.Character then
+			return false
+		end
+
 		if not waterWalkingActive()
 			or character:GetAttribute(
 				"IsDashing"

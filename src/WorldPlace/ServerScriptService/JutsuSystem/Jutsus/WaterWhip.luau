@@ -30,14 +30,19 @@ local RunService =
 	game:GetService("RunService")
 
 ---------------------------------------------------------------------
--- CONSTANTS
+-- VFX
+--
+-- El servidor solo avisa (inicio y fin del chorro); cada cliente lo dibuja
+-- desde la boca del lanzador siguiendo su giro, igual que la logica de abajo
+-- (ReplicatedStorage > JutsuSystem > ElementalFX > Water).
 ---------------------------------------------------------------------
 
-local VFX_NAME =
-	"WaterBeam"
-
-local VFX_CLEANUP_DELAY =
-	2.5
+local ElementalFX = require(
+	ReplicatedStorage
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
 
 ---------------------------------------------------------------------
 -- UTILITIES
@@ -245,220 +250,6 @@ local function resolveDamageableEntity(
 end
 
 ---------------------------------------------------------------------
--- WATER VFX
----------------------------------------------------------------------
-
-local function getWaterVfxTemplate(
-	name: string
-): Instance?
-
-	local vfx =
-		ReplicatedStorage:
-		FindFirstChild(
-			"VFX"
-		)
-
-	if not vfx then
-		return nil
-	end
-
-	local jutsus =
-		vfx:FindFirstChild(
-			"Jutsus"
-		)
-
-	if not jutsus then
-		return nil
-	end
-
-	local water =
-		jutsus:FindFirstChild(
-			"Water"
-		)
-
-	if not water then
-		return nil
-	end
-
-	return water:FindFirstChild(
-		name
-	)
-end
-
-local function configureBasePart(
-	part: BasePart
-)
-
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanTouch = false
-	part.CanQuery = false
-	part.CastShadow = false
-end
-
-local function configureVfx(
-	instance: Instance
-)
-
-	if instance:IsA("BasePart") then
-		configureBasePart(
-			instance
-		)
-	end
-
-	for _, descendant in ipairs(
-		instance:GetDescendants()
-		) do
-
-		if descendant:IsA("BasePart") then
-
-			configureBasePart(
-				descendant
-			)
-		end
-	end
-end
-
-local function setVfxEnabled(
-	instance: Instance,
-	enabled: boolean
-)
-
-	if instance:IsA("Beam") then
-		instance.Enabled =
-			enabled
-
-	elseif instance:IsA("Trail") then
-		instance.Enabled =
-			enabled
-
-	elseif instance:IsA("ParticleEmitter") then
-		instance.Enabled =
-			enabled
-	end
-
-	for _, descendant in ipairs(
-		instance:GetDescendants()
-		) do
-
-		if descendant:IsA("Beam") then
-
-			descendant.Enabled =
-				enabled
-
-		elseif descendant:IsA("Trail") then
-
-			descendant.Enabled =
-				enabled
-
-		elseif descendant:IsA("ParticleEmitter") then
-
-			descendant.Enabled =
-				enabled
-		end
-	end
-end
-
-local function findVfxRoot(
-	instance: Instance
-): BasePart?
-
-	if instance.Name == "Root"
-		and instance:IsA("BasePart") then
-
-		return instance
-	end
-
-	local root =
-		instance:FindFirstChild(
-			"Root",
-			true
-		)
-
-	if root
-		and root:IsA("BasePart") then
-
-		return root
-	end
-
-	return nil
-end
-
-local function findAttachment(
-	instance: Instance,
-	name: string
-): Attachment?
-
-	local found =
-		instance:FindFirstChild(
-			name,
-			true
-		)
-
-	if found
-		and found:IsA("Attachment") then
-
-		return found
-	end
-
-	return nil
-end
-
-local function transformWholeVfx(
-	instance: Instance,
-	delta: CFrame
-)
-
-	if instance:IsA("BasePart") then
-
-		instance.CFrame =
-			delta * instance.CFrame
-	end
-
-	for _, descendant in ipairs(
-		instance:GetDescendants()
-		) do
-
-		if descendant:IsA("BasePart") then
-
-			descendant.CFrame =
-				delta * descendant.CFrame
-		end
-	end
-end
-
-local function moveVfxRootTo(
-	instance: Instance,
-	root: BasePart,
-	targetCFrame: CFrame
-)
-
-	local delta =
-		targetCFrame
-		* root.CFrame:Inverse()
-
-	transformWholeVfx(
-		instance,
-		delta
-	)
-end
-
-local function translateWholeVfx(
-	instance: Instance,
-	offset: Vector3
-)
-
-	if offset.Magnitude < 0.0001 then
-		return
-	end
-
-	transformWholeVfx(
-		instance,
-		CFrame.new(offset)
-	)
-end
-
----------------------------------------------------------------------
 -- FLAME-BREATH STYLE MOUTH FOLLOW
 ---------------------------------------------------------------------
 
@@ -607,217 +398,6 @@ local function getFollowingDirection(
 	end
 
 	return direction.Unit
-end
-
----------------------------------------------------------------------
--- BEAM VISUAL
----------------------------------------------------------------------
-
-local function createWaterBeamVfx(): any?
-
-	local template =
-		getWaterVfxTemplate(
-			VFX_NAME
-		)
-
-	if not template then
-
-		warn(
-			"[WaterBeam v5] Missing VFX at "
-				.. "ReplicatedStorage.VFX.Jutsus.Water."
-				.. VFX_NAME
-		)
-
-		return nil
-	end
-
-	local clone =
-		template:Clone()
-
-	clone.Name =
-		"WaterBeam_VFX"
-
-	configureVfx(
-		clone
-	)
-
-	local root =
-		findVfxRoot(
-			clone
-		)
-
-	local startAttachment =
-		findAttachment(
-			clone,
-			"Start"
-		)
-
-	local endAttachment =
-		findAttachment(
-			clone,
-			"End"
-		)
-
-	if not root then
-
-		warn(
-			"[WaterBeam v5] WaterBeam has no BasePart named Root"
-		)
-
-		clone:Destroy()
-
-		return nil
-	end
-
-	if not startAttachment
-		or not endAttachment then
-
-		warn(
-			"[WaterBeam v5] WaterBeam.Root must contain Attachments named Start and End"
-		)
-
-		clone:Destroy()
-
-		return nil
-	end
-
-	if startAttachment.Parent ~= root
-		or endAttachment.Parent ~= root then
-
-		warn(
-			"[WaterBeam v5] Start and End must be direct children of Root"
-		)
-
-		clone:Destroy()
-
-		return nil
-	end
-
-	clone.Parent =
-		workspace
-
-	local startLocalPosition =
-		startAttachment.Position
-
-	endAttachment.Position =
-		startLocalPosition
-
-	setVfxEnabled(
-		clone,
-		true
-	)
-
-	return {
-		Model =
-			clone,
-
-		Root =
-			root,
-
-		StartAttachment =
-			startAttachment,
-
-		EndAttachment =
-			endAttachment,
-
-		StartLocalPosition =
-			startLocalPosition,
-	}
-end
-
-local function updateWaterBeamVfx(
-	state: any,
-	origin: Vector3,
-	direction: Vector3,
-	distance: number,
-	lengthAlpha: number,
-	yawDegrees: number,
-	endAxisSign: number
-)
-
-	if not state.Model.Parent
-		or not state.Root.Parent then
-
-		return
-	end
-
-	local targetCFrame =
-		safeLookAt(
-			origin,
-			direction
-		)
-		* CFrame.Angles(
-			0,
-			math.rad(
-				yawDegrees
-			),
-			0
-		)
-
-	moveVfxRootTo(
-		state.Model,
-		state.Root,
-		targetCFrame
-	)
-
-	-- Align the authored Start attachment EXACTLY to the mouth.
-	local startOffset =
-		origin
-	- state.StartAttachment.WorldPosition
-
-	translateWholeVfx(
-		state.Model,
-		startOffset
-	)
-
-	local finalDistance =
-		math.max(
-			0,
-			distance
-		)
-		* math.clamp(
-			lengthAlpha,
-			0,
-			1
-		)
-
-	local startPosition =
-		state.StartLocalPosition
-
-	state.EndAttachment.Position =
-		Vector3.new(
-			startPosition.X,
-			startPosition.Y,
-			startPosition.Z
-			+ finalDistance
-			* endAxisSign
-		)
-end
-
-local function cleanupWaterBeamVfx(
-	state: any?
-)
-
-	if not state then
-		return
-	end
-
-	local model =
-		state.Model
-
-	if not model.Parent then
-		return
-	end
-
-	setVfxEnabled(
-		model,
-		false
-	)
-
-	Debris:AddItem(
-		model,
-		VFX_CLEANUP_DELAY
-	)
 end
 
 ---------------------------------------------------------------------
@@ -1329,8 +909,21 @@ local function executeBeam(
 	-- VISUAL
 	-----------------------------------------------------------------
 
-	local vfxState =
-		createWaterBeamVfx()
+	-- Cada cliente dibuja el chorro con la misma lógica de boca, giro y alcance
+	local fxId =
+		ElementalFX.NewId()
+
+	ElementalFX.Fire(WaterWhip.Id, "Start", {
+		Id = fxId,
+		Caster = context.Character,
+		Direction = releaseDirection,
+		Range = range,
+		ActiveTime = activeTime,
+		GrowTime = growTime,
+		Padding = worldImpactPadding,
+	})
+
+	local _ = vfxYawDegrees + endAxisSign
 
 	-----------------------------------------------------------------
 	-- SUSTAINED BEAM
@@ -1413,18 +1006,7 @@ local function executeBeam(
 					1
 				)
 
-			if vfxState then
-
-				updateWaterBeamVfx(
-					vfxState,
-					origin,
-					direction,
-					effectiveRange,
-					lengthAlpha,
-					vfxYawDegrees,
-					endAxisSign
-				)
-			end
+			local _ = lengthAlpha
 
 			---------------------------------------------------------
 			-- GAMEPLAY HITBOX FOLLOWS THE SAME MOVING BEAM
@@ -1489,9 +1071,9 @@ local function executeBeam(
 				Wait()
 		end
 
-		cleanupWaterBeamVfx(
-			vfxState
-		)
+		ElementalFX.Fire(WaterWhip.Id, "End", {
+			Id = fxId,
+		})
 	end)
 end
 

@@ -6,6 +6,7 @@
 -- Low visual profile, moderate damage, Wind/Unsteady application.
 -- Placeholder VFX only.
 
+local BarrierTargets = require(game:GetService("ReplicatedStorage"):WaitForChild("Throwables"):WaitForChild("Targets")) -- barreras de llamas negras (Jutsus > BlackWall)
 local RunService = game:GetService("RunService")
 
 local Debris = game:GetService("Debris")
@@ -252,10 +253,13 @@ function AirBullet.SanitizeRequest(
 	}
 end
 
-local AirBulletVFX = require(script:WaitForChild("AirBulletVFX"))
-local function makeProjectileVisual(position: Vector3, direction: Vector3, radius: number): BasePart
-    return AirBulletVFX.Create(position, direction, radius)
-end
+-- VFX: el servidor solo avisa; cada cliente dibuja (ElementalFX > Wind)
+local ElementalFX = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
 
 local function executeProjectile(
 	context: any
@@ -301,16 +305,19 @@ local function executeProjectile(
 		head.Position
 		+ direction * 2.15
 
-	local visual =
-		makeProjectileVisual(
+	local fxId =
+		ElementalFX.Projectile(
+			AirBullet.Id,
+			context.Character,
 			position,
 			direction,
+			speed,
+			maxDistance,
 			radius
 		)
 
 	local ignored: {Instance} = {
 		context.Character,
-		visual,
 	}
 
 	local params =
@@ -325,7 +332,7 @@ local function executeProjectile(
 	local alive = true
 	local connection: RBXScriptConnection?
 
-	local function finish()
+	local function finish(hitPosition: Vector3?, hitNormal: Vector3?)
 		if not alive then
 			return
 		end
@@ -337,9 +344,7 @@ local function executeProjectile(
 			connection = nil
 		end
 
-		if visual.Parent then
-			visual:Destroy()
-		end
+		ElementalFX.ProjectileEnd(fxId, hitPosition, hitNormal)
 	end
 
 	connection =
@@ -377,12 +382,12 @@ local function executeProjectile(
 					ignored
 
 					local result =
-					workspace:Spherecast(
+					BarrierTargets.withBarrier(workspace:Spherecast(
 						position,
 						radius,
 						displacement,
 						params
-					)
+					), position, displacement, radius)
 
 					if not result then
 						break
@@ -421,8 +426,7 @@ local function executeProjectile(
 							context.Config.Armor,
 						})
 
-						AirBulletVFX.Impact(result.Position, result.Normal, radius)
-						finish()
+						finish(result.Position, result.Normal)
 						return
 					end
 
@@ -439,8 +443,7 @@ local function executeProjectile(
 							result.Instance
 						)
 					else
-						AirBulletVFX.Impact(result.Position, result.Normal, radius)
-						finish()
+						if BarrierTargets.consumedBy(result, result.Position, direction) then finish() else finish(result.Position, result.Normal) end
 						return
 					end
 				end
@@ -448,24 +451,11 @@ local function executeProjectile(
 				position += displacement
 				travelled += step
 
-				if visual.Parent then
-					visual.CFrame =
-					safeLookAt(
-						position,
-						direction
-					)
-				end
-
 				if travelled >= maxDistance then
 					finish()
 				end
 			end
 		)
-
-	Debris:AddItem(
-		visual,
-		maxDistance / speed + 1
-	)
 end
 
 function AirBullet.OnCastStarted(

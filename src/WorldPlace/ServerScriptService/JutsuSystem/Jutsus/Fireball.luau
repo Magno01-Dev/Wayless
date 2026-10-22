@@ -32,6 +32,7 @@
 -- - Spawn/impact sounds.
 -- - Marker-driven casting.
 
+local BarrierTargets = require(game:GetService("ReplicatedStorage"):WaitForChild("Throwables"):WaitForChild("Targets")) -- barreras de llamas negras (Jutsus > BlackWall)
 local RunService =
 	game:GetService("RunService")
 
@@ -54,6 +55,14 @@ local ProjectileSkillshotPolicy =
 		WaitForChild("JutsuSystem"):
 		WaitForChild("Shared"):
 		WaitForChild("ProjectileSkillshotPolicy")
+	)
+
+local ClientBurst =
+	require(
+		ReplicatedStorage:
+		WaitForChild("JutsuSystem"):
+		WaitForChild("Shared"):
+		WaitForChild("ClientBurst")
 	)
 
 ---------------------------------------------------------------------
@@ -485,12 +494,13 @@ local function playFireJutsuEndVFX(
 
 			else
 
-				descendant:
-					Emit(
-						resolveBurstCount(
-							descendant
-						)
+				-- Emit() en el servidor no se ve: la ráfaga la hace cada cliente
+				ClientBurst.Emit(
+					descendant,
+					resolveBurstCount(
+						descendant
 					)
+				)
 			end
 		end
 	end
@@ -873,11 +883,6 @@ local function refreshReleaseAim(
 
 	context.RequestData.Direction =
 		direction
-
-	print(
-		"[Fireball v16] RELEASE AIM ACCEPTED",
-		direction
-	)
 end
 
 ---------------------------------------------------------------------
@@ -1444,13 +1449,12 @@ local function spawnProjectile(
 				ignoredWorldInstances
 
 			local result =
-				workspace:
-				Spherecast(
+				BarrierTargets.withBarrier(workspace:Spherecast(
 					origin,
 					worldCollisionRadius,
 					displacement,
 					worldRayParams
-				)
+				), origin, displacement, worldCollisionRadius)
 
 			if not result then
 
@@ -2104,7 +2108,7 @@ local function spawnProjectile(
 
 						finish(
 							impactPosition,
-							true,
+							not BarrierTargets.consumedBy(worldResult, impactPosition, direction),
 							nil
 						)
 
@@ -2153,12 +2157,6 @@ function Fireball.OnCastMarker(
 	source: string,
 	markerPayload: any?
 )
-
-	print(
-		"[Fireball v16] MARKER",
-		semanticMarker,
-		source
-	)
 
 	if semanticMarker ==
 		"ReleaseStart" then

@@ -7,6 +7,8 @@
 --   10 technique slots per current Character Life.
 --   Empty slots are stored as "".
 --   Only actually learned techniques may be equipped.
+--   Techniques whose module has NotEquippable = true (clan awakenings: Sharingan, Byakugan,
+--   cast with the Awaken key Z) are never equipped; stored ones are dropped on load.
 --   The same technique cannot occupy more than one slot.
 --   Assigning an already-equipped technique moves it to the requested slot.
 --
@@ -185,9 +187,19 @@ local function isUsableTechniqueId(
 		return false
 	end
 
-	if not TechniqueRegistry.Get(
-		techniqueId
-		) then
+	local entry: any =
+		TechniqueRegistry.Get(
+			techniqueId
+		)
+
+	if not entry then
+
+		return false
+	end
+
+	-- Clan awakenings live on the Awaken key, not in a slot
+	if entry.Module
+		and entry.Module.NotEquippable == true then
 
 		return false
 	end
@@ -735,12 +747,22 @@ function TechniqueLoadoutService.SetSlot(
 				"InvalidTechniqueId"
 		end
 
-		if not TechniqueRegistry.Get(
-			techniqueId
-			) then
+		local registryEntry: any =
+			TechniqueRegistry.Get(
+				techniqueId
+			)
+
+		if not registryEntry then
 
 			return false,
 				"UnknownTechnique"
+		end
+
+		if registryEntry.Module
+			and registryEntry.Module.NotEquippable == true then
+
+			return false,
+				"NotEquippable"
 		end
 
 		local knownSet =

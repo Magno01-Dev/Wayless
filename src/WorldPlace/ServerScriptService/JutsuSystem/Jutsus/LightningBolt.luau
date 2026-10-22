@@ -282,9 +282,20 @@ function LightningBolt.SanitizeRequest(
 	}
 end
 
-local function spawnBoltPlaceholder(origin: Vector3, endPosition: Vector3)
-    local visual = require(script:WaitForChild("LightningBoltVFX"))
-    visual.Play(origin, endPosition)
+-- VFX: el servidor solo avisa; cada cliente dibuja (ElementalFX > Lightning)
+local ElementalFX = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
+
+local function spawnBoltPlaceholder(origin: Vector3, endPosition: Vector3, caster: Model?)
+	ElementalFX.Fire(LightningBolt.Id, "Bolt", {
+		Origin = origin,
+		End = endPosition,
+		Caster = caster,
+	})
 end
 
 local function executeBolt(
@@ -398,7 +409,8 @@ local function executeBolt(
 
 	spawnBoltPlaceholder(
 		origin,
-		endPosition
+		endPosition,
+		context.Character
 	)
 end
 

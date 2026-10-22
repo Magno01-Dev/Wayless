@@ -1,6 +1,9 @@
 --!strict
--- DownedServer v31.5 - DB CCL Cleanup + Carry Pickup Ground Clearance
+-- DownedServer v31.6 - DB CCL Cleanup + Carry Pickup Ground Clearance
 -- ServerScriptService > DownedServer
+--
+-- v31.6: el tiempo de Downed se multiplica por el atributo del jugador DownedTimeMultiplier
+-- (fuerza vital Uzumaki). Nada más cambia.
 --
 -- Existing remotes:
 -- ReplicatedStorage > DownedRemotes
@@ -170,6 +173,16 @@ applyDamageFunction.Parent = internalFolder
 -- =========================
 
 local DOWNED_TIME = 20
+
+-- v31.6: multiplicador por jugador (atributo DownedTimeMultiplier).
+-- Lo pone el kit de clanes: la fuerza vital Uzumaki se recupera antes.
+local function getDownedTime(player: Player): number
+	local multiplier = player:GetAttribute("DownedTimeMultiplier")
+	if typeof(multiplier) == "number" and multiplier > 0.2 and multiplier <= 2 then
+		return DOWNED_TIME * multiplier
+	end
+	return DOWNED_TIME
+end
 local RECOVERY_HEALTH = 30
 local DOWNED_HEALTH = 1
 
@@ -1428,7 +1441,7 @@ local function enterDowned(player: Player)
 	character:SetAttribute("IsDownedAirborne", false)
 
 	info.downedAt = time()
-	info.recoveryDeadline = info.downedAt + DOWNED_TIME
+	info.recoveryDeadline = info.downedAt + getDownedTime(player)
 	info.carriedBy = nil
 
 	setDownedAttributes(character, true, false)
@@ -1773,7 +1786,7 @@ detachCarry = function(
 			-- cannot actually begin until the body has landed.
 			targetInfo.downedAt = time()
 			targetInfo.recoveryDeadline =
-				targetInfo.downedAt + DOWNED_TIME
+				targetInfo.downedAt + getDownedTime(target)
 
 			beginAirborneDrop(target, carrierRoot)
 		end
@@ -1979,6 +1992,15 @@ local function finalKill(
 		"Executed",
 		attacker
 	)
+
+	-- Muerte real: aviso a otros sistemas (fuerza vital). ServerStorage > CombatInternal >
+	-- FinalDeath(víctima, asesino, causa). Lo crea LifeForceServer. El asesino puede ser un
+	-- Player o, más adelante, el modelo de un NPC / jefe.
+	local combatInternal = ServerStorage:FindFirstChild("CombatInternal")
+	local finalDeathEvent = combatInternal and combatInternal:FindFirstChild("FinalDeath")
+	if finalDeathEvent and finalDeathEvent:IsA("BindableEvent") then
+		finalDeathEvent:Fire(player, attacker, "Execute")
+	end
 
 	humanoid.Health = 0
 	humanoid:ChangeState(Enum.HumanoidStateType.Dead)
@@ -2191,6 +2213,36 @@ local function executePlayer(
 		return
 	end
 
+	-- Protección de novato (LifeForceServer): si se salva, no hay ejecución. Poof donde estaba,
+	-- aparece junto al spawn lejos del atacante y se levanta.
+	local lifeForceInternal = ServerStorage:FindFirstChild("LifeForceInternal")
+	local noviceSave = lifeForceInternal and lifeForceInternal:FindFirstChild("TryNoviceSave")
+	if noviceSave and noviceSave:IsA("BindableFunction") then
+		local ok, destination = pcall(function()
+			return (noviceSave :: BindableFunction):Invoke(target, attacker)
+		end)
+		if ok and typeof(destination) == "CFrame"
+			and targetCharacter.Parent
+			and targetInfo.state == "Downed" then
+
+			createExecutionPoofFx(targetRoot.CFrame)
+			cancelRecovery(targetInfo)
+			targetCharacter:PivotTo(destination)
+			zeroRootVelocity(targetRoot)
+			createExecutionPoofFx(targetRoot.CFrame)
+			startRecovery(target)
+
+			print(
+				"[Downed-Server] novice saved",
+				target.Name,
+				"from execute by",
+				attacker.Name
+			)
+
+			return
+		end
+	end
+
 	executing[attacker] = true
 	executing[target] = true
 	executionCancelRequested[attacker] = false
@@ -2312,7 +2364,7 @@ local function executePlayer(
 			-- the same physical Downed state; only the recovery clock resets.
 			targetInfo.downedAt = time()
 			targetInfo.recoveryDeadline =
-				targetInfo.downedAt + DOWNED_TIME
+				targetInfo.downedAt + getDownedTime(target)
 
 			if not targetInfo.carriedBy
 				and not targetInfo.airborne then
@@ -2340,6 +2392,14 @@ local function executePlayer(
 			executionGroundingActive = false
 			poofExecutedCharacter(targetCharacter)
 			executionVictimPhysics[target] = nil
+
+			-- Aviso a otros sistemas (maestría de clan): ServerStorage > CombatInternal >
+			-- ExecutionCompleted(attacker, target). Lo crea TechniqueKit > Clan.
+			local combatInternal = ServerStorage:FindFirstChild("CombatInternal")
+			local executed = combatInternal and combatInternal:FindFirstChild("ExecutionCompleted")
+			if executed and executed:IsA("BindableEvent") then
+				executed:Fire(attacker, target)
+			end
 		end
 
 		local untilFinish = EXECUTION_DURATION - (time() - startedAt)

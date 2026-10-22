@@ -26,6 +26,49 @@ local ChakraService = require(
 	ServerScriptService:WaitForChild("ChakraService")
 )
 
+local StaminaService = require(
+	ServerScriptService:WaitForChild("StaminaService")
+)
+
+---------------------------------------------------------------------
+-- COSTE: CHAKRA O STAMINA
+--
+-- Las técnicas físicas (taijutsu) declaran StaminaCost en vez de
+-- ChakraCost: gastan stamina y el sello de supresión no las bloquea.
+---------------------------------------------------------------------
+
+local function usesStaminaOnly(
+	config: any
+): boolean
+	return typeof(config) == "table"
+		and typeof(config.StaminaCost) == "number"
+		and config.StaminaCost > 0
+		and not (
+			typeof(config.ChakraCost) == "number"
+			and config.ChakraCost > 0
+		)
+end
+
+local function spendTechniqueCost(
+	player: Player,
+	config: any,
+	jutsuId: string
+): (boolean, string, number)
+	if usesStaminaOnly(config) then
+		return StaminaService.TrySpend(
+			player,
+			config.StaminaCost,
+			"Jutsu:" .. jutsuId
+		)
+	end
+
+	return ChakraService.TrySpend(
+		player,
+		config.ChakraCost,
+		"Jutsu:" .. jutsuId
+	)
+end
+
 local DamageService = require(
 	ServerScriptService:WaitForChild("DamageService")
 )
@@ -245,8 +288,140 @@ local activeCasts:
 	{[Player]: any} =
 	{}
 
+---------------------------------------------------------------------
+-- INTERRUPCIÓN (taijutsu)
+--
+-- ServerStorage > JutsuInternal > InterruptCast:Invoke(player) -> boolean
+-- Si el jugador está haciendo sellos y su jutsu todavía no salió,
+-- el jutsu falla (el coste ya gastado no se devuelve).
+---------------------------------------------------------------------
+
+do
+	local ServerStorage =
+		game:GetService("ServerStorage")
+
+	local internal =
+		ServerStorage:FindFirstChild("JutsuInternal")
+
+	if not internal then
+		internal = Instance.new("Folder")
+		internal.Name = "JutsuInternal"
+		internal.Parent = ServerStorage
+	end
+
+	local interrupt =
+		(internal :: Folder):FindFirstChild("InterruptCast")
+
+	if not interrupt then
+		interrupt = Instance.new("BindableFunction")
+		interrupt.Name = "InterruptCast"
+		interrupt.Parent = internal
+	end
+
+	(interrupt :: BindableFunction).OnInvoke = function(
+		player: Player
+	): boolean
+		local active =
+			activeCasts[player]
+
+		if not active
+			or active.Markers.ProjectileSpawn == true then
+
+			return false
+		end
+
+		active.Interrupted =
+			true
+
+		return true
+	end
+end
+
+---------------------------------------------------------------------
+-- OBSERVADORES DE CASTS (clanes)
+--
+-- ServerStorage > JutsuInternal > CastStarted (BindableEvent)
+-- Fire(player, character, jutsuId, info) al aceptar un cast.
+-- info = { Token, DisplayName, Category, CastTime, StartedAt, Direction?, Range?, NatureId?, IconId? }
+-- Lo escucha TechniqueKit > Clan (lectura del Sharingan): el nombre del
+-- jutsu ya NO se publica en atributos del personaje.
+---------------------------------------------------------------------
+
+local castStarted: BindableEvent = (function(): BindableEvent
+	local internal =
+		game:GetService("ServerStorage")
+			:WaitForChild("JutsuInternal")
+
+	local existing =
+		internal:FindFirstChild("CastStarted")
+
+	if existing
+		and existing:IsA("BindableEvent") then
+
+		return existing
+	end
+
+	local event =
+		Instance.new("BindableEvent")
+
+	event.Name = "CastStarted"
+	event.Parent = internal
+
+	return event
+end)()
+
+-- Alcance de un jutsu (para la trayectoria del Sharingan): el mayor Range / MaxDistance de su
+-- configuración o de sus subtablas (Projectile, Bolt, Beam…)
+local function techniqueRange(
+	config: any,
+	jutsu: any
+): number?
+
+	local best: number? =
+		nil
+
+	local function consider(
+		source: any
+	)
+		if typeof(source) ~= "table" then
+			return
+		end
+
+		for _, key in { "MaxDistance", "Range" } do
+			local value =
+				source[key]
+
+			if typeof(value) == "number"
+				and value > 0
+				and (best == nil or value > (best :: number)) then
+
+				best =
+					value
+			end
+		end
+	end
+
+	consider(config)
+
+	if typeof(config) == "table" then
+		for _, value in config do
+			consider(value)
+		end
+	end
+
+	if best == nil then
+		consider(jutsu)
+	end
+
+	return best
+end
+
 local REQUEST_MIN_INTERVAL =
 	0.08
+
+-- true = imprime cada solicitud, cast aceptado y marcador (solo para depurar)
+local DEBUG_JUTSU =
+	false
 
 local function now(): number
 	return workspace:GetServerTimeNow()
@@ -321,12 +496,126 @@ end
 -- only as a compatibility/testing path; normal players cannot use that path.
 ---------------------------------------------------------------------
 
+---------------------------------------------------------------------
+-- DESPERTAR DEL CLAN (tecla Z)
+--
+-- requestTarget = { Awaken = true }: la técnica la decide el clan
+-- (TechniqueKit > Clan.resolveAwaken: Sharingan, Byakugan…) y no
+-- ocupa slot. No hace falta aprenderla ni equiparla: Clan valida el
+-- clan y la etapa de despertar. El resto (bloqueos, cooldown, chakra,
+-- marcadores) es igual que cualquier técnica.
+---------------------------------------------------------------------
+
+local function resolveAwakenTechnique(
+	player: Player,
+	mode: string?
+): (string?, string?)
+
+	local ok,
+		clanKit =
+		pcall(
+			function()
+				return require(
+					script.Parent
+						:WaitForChild("TechniqueKit")
+						:WaitForChild("Clan")
+				) :: any
+			end
+		)
+
+	if not ok
+		or typeof(clanKit) ~= "table"
+		or typeof(clanKit.resolveAwaken) ~= "function" then
+
+		return nil,
+			"AwakenUnavailable"
+	end
+
+	return clanKit.resolveAwaken(
+		player,
+		mode
+	)
+end
+
+---------------------------------------------------------------------
+-- VELOCIDAD DE SELLOS
+--
+-- Atributo del personaje SealSpeedMultiplier (≥ 1; p. ej. el Sharingan
+-- según sus tomoe). Solo cuenta en técnicas con sellos: el jutsu puede
+-- salir antes (MinProjectileDelay / multiplicador) y la lectura del
+-- Sharingan ve una barra más corta. JutsuController acelera los sellos.
+---------------------------------------------------------------------
+
+local SEAL_CATEGORIES: {[string]: boolean} = {
+	Ninjutsu = true,
+	ElementalNinjutsu = true,
+	Genjutsu = true,
+}
+
+local function sealSpeedOf(
+	character: Model,
+	config: any,
+	jutsu: any
+): number
+
+	local category =
+		(typeof(config) == "table" and config.TechniqueCategory)
+		or jutsu.TechniqueCategory
+
+	if SEAL_CATEGORIES[category or ""] ~= true then
+		return 1
+	end
+
+	local value =
+		character:GetAttribute("SealSpeedMultiplier")
+
+	return if typeof(value) == "number"
+			and value >= 1
+			and value <= 3
+		then value
+		else 1
+end
+
 local function resolveAnimatedRequestTechnique(
 	player: Player,
 	requestTarget: any
 ): (boolean, string?, number?, string, any?)
 
 	local slotIndex: number? = nil
+
+	-- Despertar del clan (tecla Z)
+	if typeof(requestTarget) == "table"
+		and requestTarget.Awaken == true then
+
+		-- Mode: "Sharingan" (toque) · "Mangekyo" (doble toque) · "Susanoo" (mantener)
+		local awakenMode =
+			if typeof(requestTarget.Mode) == "string"
+			then requestTarget.Mode
+			else nil
+
+		local awakenId,
+			awakenReason =
+			resolveAwakenTechnique(
+				player,
+				awakenMode
+			)
+
+		if not awakenId then
+			return false,
+				nil,
+				nil,
+				awakenReason or "NoAwaken",
+				nil
+		end
+
+		return true,
+			awakenId,
+			nil,
+			"ClanAwaken",
+			{
+				TechniqueId = awakenId,
+			}
+	end
 
 	if typeof(requestTarget) == "number" then
 		slotIndex = requestTarget
@@ -466,8 +755,12 @@ local function getAliveCharacter(
 		root
 end
 
+-- escape = técnica de escape (Config.Escape = true, p. ej. Nawanuke): se puede usar
+-- con ataque bloqueado (kunai clavado, hilo, parálisis), pero no aturdido ni Downed.
 local function getActionBlockReason(
-	character: Model
+	character: Model,
+	staminaOnly: boolean?,
+	escape: boolean?
 ): string?
 
 	if character:GetAttribute(
@@ -524,8 +817,9 @@ local function getActionBlockReason(
 
 		return "StatusStunned"
 
-	elseif character:GetAttribute(
-		"Status_AttackBlocked"
+	elseif escape ~= true
+		and character:GetAttribute(
+			"Status_AttackBlocked"
 		) == true then
 
 		return "AttackBlocked"
@@ -535,6 +829,15 @@ local function getActionBlockReason(
 		) == true then
 
 		return "CombatSuppressed"
+
+		-- Sello de supresión (lanzables): sin jutsus mientras dure
+		-- (el taijutsu no usa chakra: no se bloquea)
+	elseif staminaOnly ~= true
+		and character:GetAttribute(
+			"Status_ChakraSuppressed"
+		) == true then
+
+		return "ChakraSuppressed"
 
 	elseif character:GetAttribute(
 		"ChakraCharging"
@@ -845,6 +1148,51 @@ local function dispatchMarker(
 	end
 
 	-------------------------------------------------------------
+	-- SELLO DE SUPRESIÓN
+	--
+	-- Si sellan al lanzador mientras hace los sellos de mano, el
+	-- jutsu falla: se ignoran ReleaseStart / ProjectileSpawn.
+	-- RecoveryStart y CastEnd pasan para que cada jutsu limpie
+	-- (OnCastEnded). El chakra ya gastado no se devuelve.
+	-------------------------------------------------------------
+
+	-- Interrumpido por un golpe (InterruptCast, p. ej. Dynamic Entry): el jutsu no sale
+	if active.Interrupted
+		and markerName ~= "CastEnd"
+		and markerName ~= "RecoveryStart" then
+
+		return
+	end
+
+	if markerName ~= "CastEnd"
+		and markerName ~= "RecoveryStart"
+		and not usesStaminaOnly(active.Context and active.Context.Config) then
+		local caster =
+			player.Character
+
+		if active.Suppressed
+			or (caster
+				and caster:GetAttribute(
+					"Status_ChakraSuppressed"
+				) == true) then
+
+			if not active.Suppressed
+				and DEBUG_JUTSU then
+				print(
+					"[JutsuServer v12] SUPPRESSED",
+					active.JutsuId,
+					player.Name
+				)
+			end
+
+			active.Suppressed =
+				true
+
+			return
+		end
+	end
+
+	-------------------------------------------------------------
 	-- EARLIEST PROJECTILE TIME
 	--
 	-- Keeps the client marker from creating a projectile at t=0.
@@ -864,6 +1212,14 @@ local function dispatchMarker(
 				.MinProjectileDelay
 			)
 			else 0
+
+		-- Sellos más rápidos (SealSpeedMultiplier al empezar el cast)
+		if typeof(active.SealSpeed) == "number"
+			and active.SealSpeed > 1 then
+
+			minimum /=
+				active.SealSpeed
+		end
 
 		local elapsed =
 			now()
@@ -910,13 +1266,15 @@ local function dispatchMarker(
 	] =
 		true
 
-	print(
-		"[JutsuServer v12] MARKER",
-		active.JutsuId,
-		markerName,
-		player.Name,
-		source
-	)
+	if DEBUG_JUTSU then
+		print(
+			"[JutsuServer v12] MARKER",
+			active.JutsuId,
+			markerName,
+			player.Name,
+			source
+		)
+	end
 
 	if typeof(
 		active.Jutsu.OnCastMarker
@@ -989,12 +1347,18 @@ local function processAnimatedRequest(
 		}
 	end
 
-	print(
-		"[JutsuServer v12] REQUEST RECEIVED",
-		player.Name,
-		"Slot=" .. tostring(slotIndex or "DEV"),
-		jutsuId
-	)
+	-- Despertar del clan: sin acceso de técnica aprendida ni loadout (lo valida Clan)
+	local isAwaken =
+		resolveReason == "ClanAwaken"
+
+	if DEBUG_JUTSU then
+		print(
+			"[JutsuServer v12] REQUEST RECEIVED",
+			player.Name,
+			"Slot=" .. tostring(slotIndex or "DEV"),
+			jutsuId
+		)
+	end
 
 	local currentTime =
 		now()
@@ -1037,6 +1401,39 @@ local function processAnimatedRequest(
 	end
 
 	-------------------------------------------------------------
+	-- MODOS DE CLAN (Sharingan, Byakugan)
+	--
+	-- Apagar un modo activo responde siempre: va antes del acceso,
+	-- el loadout, los bloqueos de estado y el cooldown.
+	-------------------------------------------------------------
+
+	if typeof(
+		jutsu.TryToggleOff
+		) == "function" then
+
+		local toggleCharacter =
+			player.Character
+
+		if toggleCharacter then
+			local toggleOk,
+				toggledOff =
+				pcall(
+					jutsu.TryToggleOff,
+					toggleCharacter
+				)
+
+			if toggleOk
+				and toggledOff == true then
+
+				return {
+					Accepted = false,
+					Reason = "Toggled",
+				}
+			end
+		end
+	end
+
+	-------------------------------------------------------------
 	-- AUTOMATIC TECHNIQUE / CHARACTER ORIGIN ACCESS
 	--
 	-- Any NatureId declared by the jutsu is automatically
@@ -1044,13 +1441,22 @@ local function processAnimatedRequest(
 	-- requirement. This happens BEFORE chakra/cooldown commit.
 	-------------------------------------------------------------
 
-	local accessAllowed,
-		accessReason,
-		accessDetails =
-		TechniqueRegistry.CheckCastAccess(
-			player,
-			jutsuId
-		)
+	local accessAllowed: boolean,
+		accessReason: any,
+		accessDetails: any =
+		true,
+		nil,
+		nil
+
+	if not isAwaken then
+		accessAllowed,
+			accessReason,
+			accessDetails =
+			TechniqueRegistry.CheckCastAccess(
+				player,
+				jutsuId
+			)
+	end
 
 	if not accessAllowed then
 		return {
@@ -1067,13 +1473,22 @@ local function processAnimatedRequest(
 	-- TECHNIQUE LOADOUT ACCESS
 	-------------------------------------------------------------
 
-	local loadoutAllowed,
-		loadoutReason,
-		loadoutDetails =
-		checkTechniqueLoadoutAccess(
-			player,
-			jutsuId
-		)
+	local loadoutAllowed: boolean,
+		loadoutReason: any,
+		loadoutDetails: any =
+		true,
+		nil,
+		nil
+
+	if not isAwaken then
+		loadoutAllowed,
+			loadoutReason,
+			loadoutDetails =
+			checkTechniqueLoadoutAccess(
+				player,
+				jutsuId
+			)
+	end
 
 	if not loadoutAllowed then
 		return {
@@ -1084,6 +1499,89 @@ local function processAnimatedRequest(
 			Loadout =
 				loadoutDetails,
 		}
+	end
+
+	-------------------------------------------------------------
+	-- DELEGACIÓN (Copia del Sharingan)
+	--
+	-- module.ResolveDelegate(player, character)
+	--     -> (jutsuId?, reason?, costMultiplier?)
+	-- La técnica del slot lanza OTRO jutsu. El acceso y el loadout ya
+	-- se comprobaron con la técnica del slot: el delegado no necesita
+	-- estar aprendido, equipado ni tener su naturaleza. El cooldown es
+	-- el de la técnica del slot; el coste, el del delegado × costMultiplier.
+	-- Al confirmarse se llama module.OnDelegateCommitted(player, jutsuId).
+	-------------------------------------------------------------
+
+	local slotJutsuId =
+		jutsuId
+
+	local slotConfig =
+		config
+
+	local delegateSource: any =
+		nil
+
+	local costMultiplier =
+		1
+
+	if typeof(
+		jutsu.ResolveDelegate
+		) == "function" then
+
+		local delegateOk,
+			delegateId,
+			delegateReason,
+			delegateMultiplier =
+			pcall(
+				jutsu.ResolveDelegate,
+				player,
+				player.Character
+			)
+
+		local delegateJutsu =
+			if delegateOk and typeof(delegateId) == "string"
+			then jutsus[delegateId]
+			else nil
+
+		local delegateConfig =
+			if delegateJutsu
+			then resolveJutsuConfig(
+				delegateId,
+				delegateJutsu
+			)
+			else nil
+
+		if not delegateJutsu
+			or not delegateConfig then
+
+			return {
+				Accepted = false,
+				Reason =
+					if delegateOk and typeof(delegateReason) == "string"
+					then delegateReason
+					else "NoDelegate",
+			}
+		end
+
+		delegateSource =
+			jutsu
+
+		jutsuId =
+			delegateId
+
+		jutsu =
+			delegateJutsu
+
+		config =
+			delegateConfig
+
+		if typeof(delegateMultiplier) == "number"
+			and delegateMultiplier > 0 then
+
+			costMultiplier =
+				delegateMultiplier
+		end
 	end
 
 	if typeof(
@@ -1117,7 +1615,9 @@ local function processAnimatedRequest(
 
 	local blockReason =
 		getActionBlockReason(
-			character
+			character,
+			usesStaminaOnly(config),
+			typeof(config) == "table" and config.Escape == true
 		)
 
 	if blockReason then
@@ -1157,7 +1657,7 @@ local function processAnimatedRequest(
 
 	local cooldownEndsAt =
 		playerCooldowns[
-	jutsuId
+	slotJutsuId
 	] or 0
 
 	if cooldownEndsAt >
@@ -1218,14 +1718,46 @@ local function processAnimatedRequest(
 	-- CHAKRA
 	-------------------------------------------------------------
 
+	-- module.ChakraCostMultiplier(player) -> número: la técnica puede costar más según el
+	-- estado (Enton: Black Spear con el Susanoo activo)
+	if typeof(jutsu.ChakraCostMultiplier) == "function" then
+		local chakraOk, chakraValue =
+			pcall(jutsu.ChakraCostMultiplier, player)
+
+		if chakraOk
+			and typeof(chakraValue) == "number"
+			and chakraValue > 0 then
+
+			costMultiplier *= chakraValue
+		end
+	end
+
+	-- Delegado (Copia): el coste del jutsu copiado × costMultiplier
+	local costConfig: any =
+		config
+
+	if costMultiplier ~= 1
+		and typeof(config) == "table" then
+
+		costConfig =
+			table.clone(config)
+
+		if typeof(costConfig.ChakraCost) == "number" then
+			costConfig.ChakraCost *= costMultiplier
+		end
+
+		if typeof(costConfig.StaminaCost) == "number" then
+			costConfig.StaminaCost *= costMultiplier
+		end
+	end
+
 	local spent,
 		spendReason,
 		chakraRemaining =
-		ChakraService.TrySpend(
+		spendTechniqueCost(
 			player,
-			config.ChakraCost,
-			"Jutsu:"
-			.. jutsuId
+			costConfig,
+			jutsuId
 		)
 
 	if not spent then
@@ -1244,12 +1776,33 @@ local function processAnimatedRequest(
 	-- COMMIT
 	-------------------------------------------------------------
 
+	-- module.CooldownMultiplier(player) -> número: la técnica del slot puede alargar su
+	-- recarga (las del Mangekyō, con la ceguera alta)
+	local cooldownModule =
+		delegateSource or jutsu
+
+	local cooldownMultiplier =
+		1
+
+	if typeof(cooldownModule.CooldownMultiplier) == "function" then
+		local multiplierOk, multiplierValue =
+			pcall(cooldownModule.CooldownMultiplier, player)
+
+		if multiplierOk
+			and typeof(multiplierValue) == "number"
+			and multiplierValue > 0 then
+
+			cooldownMultiplier =
+				multiplierValue
+		end
+	end
+
 	local newCooldownEndsAt =
 		currentTime
-		+ config.Cooldown
+		+ slotConfig.Cooldown * cooldownMultiplier
 
 	playerCooldowns[
-	jutsuId
+	slotJutsuId
 	] =
 		newCooldownEndsAt
 
@@ -1279,12 +1832,12 @@ local function processAnimatedRequest(
 
 	setCoreCooldown(
 		character,
-		jutsuId,
+		slotJutsuId,
 		if typeof(
-			config.DisplayName
+			slotConfig.DisplayName
 		) == "string"
-			then config.DisplayName
-			else jutsuId,
+			then slotConfig.DisplayName
+			else slotJutsuId,
 		currentTime,
 		newCooldownEndsAt
 	)
@@ -1366,7 +1919,88 @@ local function processAnimatedRequest(
 
 		LastHandSignSFXAt =
 			0,
+
+		SealSpeed =
+			sealSpeedOf(
+				character,
+				config,
+				jutsu
+			),
 	}
+
+	-- Observadores (lectura del Sharingan): qué se lanza, hacia dónde y cuándo sale
+	castStarted:Fire(
+		player,
+		character,
+		jutsuId,
+		{
+			Token =
+				token,
+
+			DisplayName =
+				if typeof(config.DisplayName) == "string"
+				then config.DisplayName
+				else jutsuId,
+
+			Category =
+				config.TechniqueCategory
+				or jutsu.TechniqueCategory,
+
+			CastTime =
+				(if typeof(config.CastTime) == "number"
+				then config.CastTime
+				else 0.5)
+				/ sealSpeedOf(
+					character,
+					config,
+					jutsu
+				),
+
+			StartedAt =
+				currentTime,
+
+			Direction =
+				if typeof(requestData) == "table"
+					and typeof(requestData.Direction) == "Vector3"
+				then requestData.Direction
+				else nil,
+
+			Range =
+				techniqueRange(
+					config,
+					jutsu
+				),
+
+			NatureId =
+				config.NatureId
+				or jutsu.NatureId,
+
+			IconId =
+				config.IconId
+				or jutsu.IconId,
+		}
+	)
+
+	-- Copia: se gasta lo copiado
+	if delegateSource
+		and typeof(delegateSource.OnDelegateCommitted) == "function" then
+
+		local delegatedOk,
+			delegatedErr =
+			pcall(
+				delegateSource.OnDelegateCommitted,
+				player,
+				jutsuId
+			)
+
+		if not delegatedOk then
+			warn(
+				"[JutsuServer v12] OnDelegateCommitted failed",
+				slotJutsuId,
+				delegatedErr
+			)
+		end
+	end
 
 	if typeof(
 		jutsu.OnCastStarted
@@ -1471,12 +2105,14 @@ local function processAnimatedRequest(
 		end
 	)
 
-	print(
-		"[JutsuServer v12] ACCEPTED",
-		player.Name,
-		jutsuId,
-		token
-	)
+	if DEBUG_JUTSU then
+		print(
+			"[JutsuServer v12] ACCEPTED",
+			player.Name,
+			jutsuId,
+			token
+		)
+	end
 
 	return {
 		Accepted = true,
@@ -1618,6 +2254,13 @@ animatedSFX.OnServerEvent:
 				jutsuId
 				or active.Token ~=
 				token then
+
+				return
+			end
+
+			-- Técnicas sin sellos (dōjutsu): sin sonidos de sellos, usan solo el suyo
+			if active.Jutsu
+				and active.Jutsu.NoHandSigns == true then
 
 				return
 			end
@@ -1825,7 +2468,9 @@ legacyRequestRemote.OnServerEvent:
 
 			local block =
 			getActionBlockReason(
-				character
+				character,
+				usesStaminaOnly(config),
+				typeof(config) == "table" and config.Escape == true
 			)
 
 			if block then
@@ -1904,11 +2549,10 @@ legacyRequestRemote.OnServerEvent:
 			local spent,
 			spendReason,
 			chakraRemaining =
-			ChakraService.TrySpend(
+			spendTechniqueCost(
 				player,
-				config.ChakraCost,
-				"Jutsu:"
-				.. jutsuId
+				config,
+				jutsuId
 			)
 
 			if not spent then

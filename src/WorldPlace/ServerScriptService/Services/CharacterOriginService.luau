@@ -748,15 +748,16 @@ function CharacterOriginService.LoadPlayer(player: Player): boolean
 
 			elseif oldLifeId ~= lifeId then
 				-- New incarnation in the same permanent slot.
-				-- Clan/Natures come from AccountProfile; KG potential is
-				-- intentionally preserved as slot genetics. Life-scoped
+				-- Clan/Natures come from AccountProfile and are kept; the Natural
+				-- KG Potential is ROLLED AGAIN (Magno, 2026-10-21: the roll only
+				-- opens KG early, it never blocks earning it later). Life-scoped
 				-- village/nature-unlock state resets.
 				state.Data = generateData(
 					slotId,
 					permanentOrigin,
 					lifeId,
 					characterId,
-					loaded.NaturalKGPotentialRoll
+					nil
 				)
 				migrated = true
 
@@ -1121,7 +1122,8 @@ function CharacterOriginService.HasNaturalKGAvailable(
 end
 
 -- Deprecated compatibility hook.
--- Genetics are slot-persistent. A wipe/new life must NOT reroll this value.
+-- Clan and Natures are slot-persistent; the Natural KG Potential is re-rolled automatically
+-- when a new life starts (see the new-incarnation branch of the loader), so nothing to do here.
 function CharacterOriginService.RerollNaturalKGPotentialForNewLife(
 	player: Player
 ): (boolean, string)
@@ -1131,7 +1133,7 @@ function CharacterOriginService.RerollNaturalKGPotentialForNewLife(
 	end
 
 	return true,
-		"NaturalKGPotentialPreservedBySlot"
+		"NaturalKGPotentialRerolledOnNewLife"
 end
 
 -- Developer QA helpers.

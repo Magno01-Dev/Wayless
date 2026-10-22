@@ -459,13 +459,19 @@ local function getGroundCastPosition(
 	)
 end
 
+-- VFX: el servidor solo avisa; cada cliente dibuja la onda y reproduce el sonido (ElementalFX > Earth)
+local ElementalFX = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
+
 local function playTremorCastVFX(
 	context: any,
-	root: BasePart
+	root: BasePart,
+	radius: number
 )
-	local vfxRemote: RemoteEvent =
-		context.VFXRemote
-
 	local groundPosition =
 		getGroundCastPosition(
 			context,
@@ -478,64 +484,18 @@ local function playTremorCastVFX(
 			context.RequestData.Direction
 		)
 
-	local effectId =
-		if typeof(context.CastToken) == "string"
-		then context.CastToken
-		else tostring(
-			workspace:GetServerTimeNow()
-		)
-
-	vfxRemote:FireAllClients(
-		"Cast",
-		{
-			CastMode =
-				"Static",
-
-			JutsuId =
-				EarthTremor.Id,
-
-			VFXNature =
-				"Earth",
-
-			VFXModel =
-				"EarthTremor",
-
-			VFXAnchor =
-				"Ground",
-
-			Position =
-				groundPosition,
-
-			Direction =
-				direction,
-
-			Duration =
-				EARTH_TREMOR_VFX_DURATION,
-
-			SoundId =
-				EARTH_TREMOR_SOUND_ID,
-
-			SoundVolume =
-				EARTH_TREMOR_SOUND_VOLUME,
-
-			SoundMinDistance =
-				8,
-
-			SoundMaxDistance =
-				85,
-
-			ScreenShake =
-				EARTH_TREMOR_SHAKE,
-
-			EffectId =
-				effectId,
-		}
-	)
-
-	print(
-		"[EarthTremor v6] CAST VFX",
-		"ReplicatedStorage.VFX.Jutsus.Earth.EarthTremor"
-	)
+	ElementalFX.Fire(EarthTremor.Id, "Tremor", {
+		Position = groundPosition,
+		Direction = direction,
+		Radius = radius,
+		Duration = EARTH_TREMOR_VFX_DURATION,
+		SoundId = EARTH_TREMOR_SOUND_ID,
+		SoundVolume = EARTH_TREMOR_SOUND_VOLUME,
+		SoundMinDistance = 8,
+		SoundMaxDistance = 85,
+		ScreenShake = EARTH_TREMOR_SHAKE,
+		Caster = context.Character,
+	})
 end
 
 local function executeTremor(
@@ -659,7 +619,8 @@ local function executeTremor(
 
 	playTremorCastVFX(
 		context,
-		root
+		root,
+		radius
 	)
 end
 

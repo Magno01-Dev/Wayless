@@ -382,6 +382,12 @@ local function onWalkMarker(
 	data: CharacterData
 )
 
+	-- Invisible tras la sustitución (otro jugador): sin pasos ni polvo que lo delaten
+	if data.character:GetAttribute("SubstitutionHidden") == true
+		and data.character ~= game:GetService("Players").LocalPlayer.Character then
+		return
+	end
+
 	if blocked(
 		data
 		) then

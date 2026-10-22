@@ -1,8 +1,8 @@
 --!strict
--- RyoHUDController v2 - Astra RyoHUD integration candidate
+-- RyoHUDController - compact coin + lower ornament
 -- StarterPlayer > StarterPlayerScripts > RyoHUDController [LocalScript]
 --
--- Presentation is defined by the user-supplied Astra RyoHUD package.
+-- Upload the two supplied PNGs and set their IDs below. Replace the existing LocalScript.
 -- Currency remains server-authoritative through Player attribute "Ryo".
 -- This client only renders confirmed balance changes.
 
@@ -15,38 +15,36 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 local ATTRIBUTE_NAME = "Ryo"
 
-local MONEY_FRAME_IMAGE = "rbxassetid://89344263943061"
-local CLOUD_ENGRAVING_IMAGE = "rbxassetid://70710879501168"
+-- Paste the numeric IDs between quotes (rbxassetid:// prefix also accepted).
+local COIN_ASSET_ID = "128540275309363" -- RyoCoin.png
+local TRIM_ASSET_ID = "119486248350752" -- RyoUnderline.png
+
+local function assetUri(id: string): string
+	if id == "" then return "" end
+	if string.match(id, "^%d+$") then return "rbxassetid://" .. id end
+	return id
+end
 
 local REFERENCE_WIDTH = 1920
 local REFERENCE_HEIGHT = 1080
 
-local HUD_WIDTH = 205
-local HUD_HEIGHT = 56
-local RIGHT_OFFSET = 10
+local HUD_WIDTH = 224
+local HUD_HEIGHT = 48
+local LEFT_OFFSET = 24
 local BOTTOM_OFFSET = 24
 
-local SURFACE_X = 19.27
-local SURFACE_Y = 14.84
-local SURFACE_WIDTH = 167.28
-local SURFACE_HEIGHT = 24.64
-local CLOUD_TILE_SIZE = 78
 
 local DELTA_DURATION_IN = 0.225
 local DELTA_DURATION_HOLD_RISE = 0.750
 local DELTA_DURATION_OUT = 0.525
 
-local TITLE_FONT = Font.new("rbxasset://fonts/families/Fondamento.json")
 local NUMBERS_FONT = Font.new("rbxasset://fonts/families/Merriweather.json")
 
 local COLOR_SURFACE = Color3.fromRGB(18, 24, 25)
 local COLOR_BALANCE = Color3.fromRGB(243, 233, 214)
-local COLOR_CURRENCY = Color3.fromRGB(198, 180, 147)
 local COLOR_GAIN = Color3.fromRGB(165, 203, 176)
 local COLOR_SPEND = Color3.fromRGB(211, 154, 142)
 
-local SURFACE_TRANSPARENCY = 0.52
-local CLOUD_TRANSPARENCY = 0.55
 
 local oldGui = playerGui:FindFirstChild("RyoHUD")
 if oldGui then
@@ -65,12 +63,13 @@ gui.Parent = playerGui
 -- screen bounds to avoid overlap.
 local root = Instance.new("Frame")
 root.Name = "Container"
-root.AnchorPoint = Vector2.new(1, 1)
+root.AnchorPoint = Vector2.new(0, 1)
 root.BackgroundTransparency = 1
 root.BorderSizePixel = 0
 root.ClipsDescendants = false
 root.Parent = gui
 
+-- Fixed line height keeps comma descenders from changing vertical alignment.
 -- The outer Container is sized in rendered pixels. The inner Canvas holds the
 -- exact 1920x1080 reference-space layout and receives the package UIScale.
 local canvas = Instance.new("Frame")
@@ -87,121 +86,47 @@ uiScale.Name = "ReferenceScale"
 uiScale.Scale = 1
 uiScale.Parent = canvas
 
+-- Open-ended compact currency treatment; no legacy frame artwork.
 local surface = Instance.new("Frame")
 surface.Name = "Surface"
-surface.Position = UDim2.fromOffset(SURFACE_X, SURFACE_Y)
-surface.Size = UDim2.fromOffset(SURFACE_WIDTH, SURFACE_HEIGHT)
-surface.BackgroundTransparency = 1
+surface.Position = UDim2.fromOffset(0, 3)
+surface.Size = UDim2.fromOffset(222, 35)
+surface.BackgroundColor3 = Color3.fromRGB(20, 24, 21)
+surface.BackgroundTransparency = 0
 surface.BorderSizePixel = 0
-surface.ClipsDescendants = false
-surface.ZIndex = 1
 surface.Parent = canvas
-
-type Point = {
-	x: number,
-	y: number,
-}
-
-local SURFACE_POLYGON: {Point} = {
-	{x = 1, y = 0},
-	{x = 99, y = 0},
-	{x = 100, y = 10},
-	{x = 100, y = 90},
-	{x = 99, y = 100},
-	{x = 20, y = 100},
-	{x = 13, y = 80},
-	{x = 0, y = 70},
-	{x = 0, y = 10},
-}
-
-local function getPolygonSpanAtY(yPixels: number): (number, number)
-	local yPercent = (yPixels / SURFACE_HEIGHT) * 100
-	local intersections: {number} = {}
-
-	for index = 1, #SURFACE_POLYGON do
-		local a = SURFACE_POLYGON[index]
-		local b = SURFACE_POLYGON[(index % #SURFACE_POLYGON) + 1]
-
-		if a.y ~= b.y then
-			local minY = math.min(a.y, b.y)
-			local maxY = math.max(a.y, b.y)
-
-			if yPercent >= minY and yPercent < maxY then
-				local t = (yPercent - a.y) / (b.y - a.y)
-				local xPercent = a.x + (b.x - a.x) * t
-				table.insert(intersections, xPercent)
-			end
-		end
-	end
-
-	table.sort(intersections)
-
-	if #intersections < 2 then
-		return 0, 0
-	end
-
-	local left = (intersections[1] / 100) * SURFACE_WIDTH
-	local right = (intersections[#intersections] / 100) * SURFACE_WIDTH
-	return left, right
+local fade = Instance.new("UIGradient")
+fade.Transparency = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 1),
+	NumberSequenceKeypoint.new(0.16, 0.35),
+	NumberSequenceKeypoint.new(0.70, 0.55),
+	NumberSequenceKeypoint.new(1, 1),
+})
+fade.Parent = surface
+-- Final PNGs already have transparent padding cropped. Do not crop them again.
+local function artwork(name: string, id: string, x: number, y: number, w: number, h: number, z: number)
+	local image = Instance.new("ImageLabel")
+	image.Name = name
+	image.BackgroundTransparency = 1
+	image.BorderSizePixel = 0
+	image.Position = UDim2.fromOffset(x, y)
+	image.Size = UDim2.fromOffset(w, h)
+	image.Image = assetUri(id)
+	image.ScaleType = Enum.ScaleType.Stretch
+	image.ZIndex = z
+	image.Parent = canvas
+	return image
 end
 
--- Roblox has no CSS clip-path. Rasterize the exact Astra polygon with
--- horizontal reference-pixel strips. Each strip clips the same globally
--- aligned tiled cloud image, so the texture does not restart at polygon edges.
-local stripCount = math.ceil(SURFACE_HEIGHT)
-for stripIndex = 0, stripCount - 1 do
-	local y = stripIndex
-	local stripHeight = math.min(1, SURFACE_HEIGHT - y)
-	if stripHeight <= 0 then
-		break
-	end
-
-	local left, right = getPolygonSpanAtY(y + stripHeight * 0.5)
-	local width = math.max(0, right - left)
-
-	if width > 0 then
-		local strip = Instance.new("Frame")
-		strip.Name = string.format("MaskStrip_%02d", stripIndex + 1)
-		strip.Position = UDim2.fromOffset(left, y)
-		strip.Size = UDim2.fromOffset(width, stripHeight)
-		strip.BackgroundColor3 = COLOR_SURFACE
-		strip.BackgroundTransparency = SURFACE_TRANSPARENCY
-		strip.BorderSizePixel = 0
-		strip.ClipsDescendants = true
-		strip.ZIndex = 1
-		strip.Parent = surface
-
-		local clouds = Instance.new("ImageLabel")
-		clouds.Name = "Clouds"
-		clouds.Position = UDim2.fromOffset(-left, -y)
-		clouds.Size = UDim2.fromOffset(SURFACE_WIDTH, SURFACE_HEIGHT)
-		clouds.BackgroundTransparency = 1
-		clouds.BorderSizePixel = 0
-		clouds.Image = CLOUD_ENGRAVING_IMAGE
-		clouds.ImageTransparency = CLOUD_TRANSPARENCY
-		clouds.ScaleType = Enum.ScaleType.Tile
-		clouds.TileSize = UDim2.fromOffset(CLOUD_TILE_SIZE, CLOUD_TILE_SIZE)
-		clouds.ZIndex = 2
-		clouds.Parent = strip
-	end
-end
-
-local frame = Instance.new("ImageLabel")
-frame.Name = "Frame"
-frame.Position = UDim2.fromOffset(0, 0)
-frame.Size = UDim2.fromOffset(HUD_WIDTH, HUD_HEIGHT)
-frame.BackgroundTransparency = 1
-frame.BorderSizePixel = 0
-frame.Image = MONEY_FRAME_IMAGE
-frame.ImageTransparency = 0
-frame.ScaleType = Enum.ScaleType.Stretch
-frame.ZIndex = 3
-frame.Parent = canvas
+-- Coin core: x=10, y=6.6, 28x27.8. Extra PNG padding holds its 0.8px outline.
+artwork("RyoCoin", COIN_ASSET_ID, 9, 5.5982, 30, 29.8036, 3)
+-- Cloud renders in front of the coin, as approved.
+artwork("GoldAccent", TRIM_ASSET_ID, 2, 25, 216, 20, 4)
 
 local balanceGroup = Instance.new("Frame")
 balanceGroup.Name = "BalanceGroup"
-balanceGroup.Position = UDim2.fromOffset(60, 15.12)
-balanceGroup.Size = UDim2.fromOffset(119, 23.52)
+balanceGroup.Position = UDim2.fromOffset(46, 4.5)
+balanceGroup.Size = UDim2.fromOffset(168, 32)
 balanceGroup.BackgroundTransparency = 1
 balanceGroup.BorderSizePixel = 0
 balanceGroup.ZIndex = 4
@@ -210,7 +135,7 @@ balanceGroup.Parent = canvas
 local balanceLayout = Instance.new("UIListLayout")
 balanceLayout.Name = "Layout"
 balanceLayout.FillDirection = Enum.FillDirection.Horizontal
-balanceLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+balanceLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 balanceLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 balanceLayout.SortOrder = Enum.SortOrder.LayoutOrder
 balanceLayout.Padding = UDim.new(0, 6)
@@ -226,36 +151,20 @@ balanceLabel.BorderSizePixel = 0
 balanceLabel.FontFace = NUMBERS_FONT
 balanceLabel.Text = "0"
 balanceLabel.TextColor3 = COLOR_BALANCE
-balanceLabel.TextSize = 14
+balanceLabel.TextSize = 22
+balanceLabel.TextStrokeColor3 = Color3.fromRGB(20, 20, 18)
+balanceLabel.TextStrokeTransparency = 0.55
 balanceLabel.TextScaled = false
 balanceLabel.TextWrapped = false
-balanceLabel.TextXAlignment = Enum.TextXAlignment.Center
+balanceLabel.TextXAlignment = Enum.TextXAlignment.Left
 balanceLabel.TextYAlignment = Enum.TextYAlignment.Center
-balanceLabel.ZIndex = 4
+balanceLabel.ZIndex = 5
 balanceLabel.Parent = balanceGroup
-
-local currencyLabel = Instance.new("TextLabel")
-currencyLabel.Name = "Currency"
-currencyLabel.LayoutOrder = 2
-currencyLabel.AutomaticSize = Enum.AutomaticSize.X
-currencyLabel.Size = UDim2.new(0, 0, 1, 0)
-currencyLabel.BackgroundTransparency = 1
-currencyLabel.BorderSizePixel = 0
-currencyLabel.FontFace = TITLE_FONT
-currencyLabel.Text = "Ryo"
-currencyLabel.TextColor3 = COLOR_CURRENCY
-currencyLabel.TextSize = 14
-currencyLabel.TextScaled = false
-currencyLabel.TextWrapped = false
-currencyLabel.TextXAlignment = Enum.TextXAlignment.Center
-currencyLabel.TextYAlignment = Enum.TextYAlignment.Center
-currencyLabel.ZIndex = 4
-currencyLabel.Parent = balanceGroup
 
 local deltaRoot = Instance.new("Frame")
 deltaRoot.Name = "Delta"
-deltaRoot.Position = UDim2.fromOffset(60, -10)
-deltaRoot.Size = UDim2.fromOffset(119, 20)
+deltaRoot.Position = UDim2.fromOffset(46, -20)
+deltaRoot.Size = UDim2.fromOffset(168, 20)
 deltaRoot.BackgroundTransparency = 1
 deltaRoot.BorderSizePixel = 0
 deltaRoot.ClipsDescendants = false
@@ -283,7 +192,7 @@ deltaShadow.TextColor3 = Color3.new(0, 0, 0)
 deltaShadow.TextSize = 14
 deltaShadow.TextScaled = false
 deltaShadow.TextTransparency = 1
-deltaShadow.TextXAlignment = Enum.TextXAlignment.Center
+deltaShadow.TextXAlignment = Enum.TextXAlignment.Left
 deltaShadow.TextYAlignment = Enum.TextYAlignment.Center
 deltaShadow.ZIndex = 5
 deltaShadow.Parent = deltaMover
@@ -300,7 +209,7 @@ deltaLabel.TextColor3 = COLOR_GAIN
 deltaLabel.TextSize = 14
 deltaLabel.TextScaled = false
 deltaLabel.TextTransparency = 1
-deltaLabel.TextXAlignment = Enum.TextXAlignment.Center
+deltaLabel.TextXAlignment = Enum.TextXAlignment.Left
 deltaLabel.TextYAlignment = Enum.TextYAlignment.Center
 deltaLabel.ZIndex = 6
 deltaLabel.Parent = deltaMover
@@ -350,13 +259,13 @@ local function getReferenceScale(): number
 		return 1
 	end
 
-	return math.min(viewport.X / REFERENCE_WIDTH, viewport.Y / REFERENCE_HEIGHT)
+	return math.clamp(math.min(viewport.X / REFERENCE_WIDTH, viewport.Y / REFERENCE_HEIGHT), 0.85, 1.15)
 end
 
 local function updateScaleAndPlacement()
 	local scale = getReferenceScale()
 	uiScale.Scale = scale
-	root.Position = UDim2.new(1, -RIGHT_OFFSET * scale, 1, -BOTTOM_OFFSET * scale)
+	root.Position = UDim2.new(0, LEFT_OFFSET * scale, 1, -BOTTOM_OFFSET * scale)
 	root.Size = UDim2.fromOffset(HUD_WIDTH * scale, HUD_HEIGHT * scale)
 end
 
@@ -582,12 +491,8 @@ end))
 -- yet, the first valid attribute update is also treated as initial sync.
 syncFromAttribute(false)
 
-if MONEY_FRAME_IMAGE == "" then
-	warn("[RyoHUDController] MoneyFrame Image Asset ID is not set yet")
-end
-
-if CLOUD_ENGRAVING_IMAGE == "" then
-	warn("[RyoHUDController] CloudEngraving Image Asset ID is not set yet")
+if COIN_ASSET_ID == "" or TRIM_ASSET_ID == "" then
+	warn("[RyoHUDController] Set COIN_ASSET_ID and TRIM_ASSET_ID at the top of this script.")
 end
 
 track(script.Destroying:Connect(function()
@@ -615,4 +520,5 @@ track(script.Destroying:Connect(function()
 	end
 end))
 
-print("[RyoHUDController] Astra RyoHUD candidate ready | Backend=Player.Ryo | Persistence unchanged")
+print("[RyoHUDController] Compact RyoHUD ready | Backend=Player.Ryo | Persistence unchanged")
+

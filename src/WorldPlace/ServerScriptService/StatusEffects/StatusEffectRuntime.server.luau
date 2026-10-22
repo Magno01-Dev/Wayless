@@ -14,6 +14,9 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 print("[StatusEffectRuntime] BOOT v1.8 ElementalPotency")
 
+-- true = imprime cada tick de daño por estado (solo para depurar)
+local DEBUG_STATUS_DAMAGE = false
+
 local services =
 	ServerScriptService:WaitForChild("Services")
 
@@ -139,20 +142,23 @@ StatusEffectService.SetDamageHandler(function(
 			true,
 		})
 
-	print(
-		"[StatusFX Damage]",
-		effectId,
-		targetCharacter.Name,
-		"| result=",
-		resolution.Result,
-		"| damage=",
-		string.format(
-			"%.2f",
-			resolution.FinalDamage
-		),
-		"| stacks=",
-		context.Stacks
-	)
+	-- Antes imprimía en cada tick de daño (quemadura, veneno...) y llenaba el Output
+	if DEBUG_STATUS_DAMAGE then
+		print(
+			"[StatusFX Damage]",
+			effectId,
+			targetCharacter.Name,
+			"| result=",
+			resolution.Result,
+			"| damage=",
+			string.format(
+				"%.2f",
+				resolution.FinalDamage
+			),
+			"| stacks=",
+			context.Stacks
+		)
+	end
 end)
 
 StatusEffectService.Start()
@@ -364,6 +370,12 @@ local function ensureIndicator(
 	return nil
 end
 
+-- Estados internos que no se muestran en el indicador (ya tienen su propio efecto visual)
+local HIDDEN_IN_INDICATOR = {
+	DojutsuActive = true, -- Sharingan / Byakugan: ojos, brillo y sonido
+	SubstitutionVanish = true, -- invisible tras sustituirse: no debe delatarlo
+}
+
 local function updateIndicator(
 	character: Model
 )
@@ -390,7 +402,7 @@ local function updateIndicator(
 
 			if child:IsA(
 				"Folder"
-				) then
+				) and not HIDDEN_IN_INDICATOR[child.Name] then
 
 				local stacks =
 					child:GetAttribute(

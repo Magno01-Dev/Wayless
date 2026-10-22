@@ -6,6 +6,7 @@
 -- Strong Charged application pressure through repeated hits.
 -- Placeholder VFX only.
 
+local BarrierTargets = require(game:GetService("ReplicatedStorage"):WaitForChild("Throwables"):WaitForChild("Targets")) -- barreras de llamas negras (Jutsus > BlackWall)
 local RunService = game:GetService("RunService")
 
 local Debris = game:GetService("Debris")
@@ -287,10 +288,13 @@ function LightningSenbon.SanitizeRequest(
 	}
 end
 
-local LightningSenbonVFX = require(script:WaitForChild("LightningSenbonVFX"))
-local function makeSenbonVisual(position: Vector3, direction: Vector3): BasePart
-    return LightningSenbonVFX.Create(position, direction)
-end
+-- VFX: el servidor solo avisa; cada cliente dibuja (ElementalFX > Lightning)
+local ElementalFX = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
 
 local function launchNeedle(
 	context: any,
@@ -303,15 +307,19 @@ local function launchNeedle(
 	local position =
 		origin
 
-	local visual =
-		makeSenbonVisual(
+	local fxId =
+		ElementalFX.Projectile(
+			LightningSenbon.Id,
+			context.Character,
 			position,
-			direction
+			direction,
+			speed,
+			maxDistance,
+			radius
 		)
 
 	local ignored: {Instance} = {
 		context.Character,
-		visual,
 	}
 
 	local params =
@@ -338,10 +346,7 @@ local function launchNeedle(
 			connection = nil
 		end
 
-		if hitPosition and hitNormal then
-			LightningSenbonVFX.Impact(hitPosition, hitNormal)
-		end
-		LightningSenbonVFX.Release(visual)
+		ElementalFX.ProjectileEnd(fxId, hitPosition, hitNormal)
 	end
 
 	connection =
@@ -379,12 +384,12 @@ local function launchNeedle(
 					ignored
 
 					local result =
-					workspace:Spherecast(
+					BarrierTargets.withBarrier(workspace:Spherecast(
 						position,
 						radius,
 						displacement,
 						params
-					)
+					), position, displacement, radius)
 
 					if not result then
 						break
@@ -421,7 +426,7 @@ local function launchNeedle(
 							result.Instance
 						)
 					else
-						finish(result.Position, result.Normal)
+						if BarrierTargets.consumedBy(result, result.Position, direction) then finish() else finish(result.Position, result.Normal) end
 						return
 					end
 				end
@@ -429,24 +434,11 @@ local function launchNeedle(
 				position += displacement
 				travelled += step
 
-				if visual.Parent then
-					visual.CFrame =
-					safeLookAt(
-						position,
-						direction
-					)
-				end
-
 				if travelled >= maxDistance then
 					finish()
 				end
 			end
 		)
-
-	Debris:AddItem(
-		visual,
-		maxDistance / speed + 1
-	)
 end
 
 local function executeSenbon(

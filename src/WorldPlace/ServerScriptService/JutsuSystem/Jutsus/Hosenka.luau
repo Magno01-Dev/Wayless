@@ -12,6 +12,7 @@
 -- - Impact sound 99101526343223.
 -- - Sin AOE.
 
+local BarrierTargets = require(game:GetService("ReplicatedStorage"):WaitForChild("Throwables"):WaitForChild("Targets")) -- barreras de llamas negras (Jutsus > BlackWall)
 local RunService =
 	game:GetService("RunService")
 
@@ -1114,12 +1115,12 @@ local function launchProjectile(
 				ignoredWorldInstances
 
 			local result =
-				workspace:Spherecast(
+				BarrierTargets.withBarrier(workspace:Spherecast(
 					origin,
 					worldCollisionRadius,
 					displacement,
 					worldRayParams
-				)
+				), origin, displacement, worldCollisionRadius)
 
 			if not result then
 
@@ -1689,7 +1690,7 @@ local function launchProjectile(
 
 						finish(
 							impactPosition,
-							true
+							not BarrierTargets.consumedBy(worldResult, impactPosition, direction)
 						)
 
 						return

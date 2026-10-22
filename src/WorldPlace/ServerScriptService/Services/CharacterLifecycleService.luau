@@ -247,7 +247,7 @@ function CharacterLifecycleService.GetState(
 		TransitionSerial =
 			transitionSerials[player] or 0,
 
-		LifeForceImplemented = false,
+		LifeForceImplemented = true, -- LifeForceServer + AccountProfileService.AdjustLifeForce
 		AfterlifePlaceImplemented = false,
 		ChildDataLifeScoped = true,
 	}

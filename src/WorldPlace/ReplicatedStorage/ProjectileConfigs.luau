@@ -830,6 +830,122 @@ local ProjectileConfigs = {
 			},
 		},
 	},
+	--[[
+	Pegar estas entradas DENTRO de la tabla `ProjectileConfigs` de
+	ReplicatedStorage > ProjectileConfigs, justo antes del `}` final
+	(después de la entrada Fuma).
+
+	ProjectileConfigs sigue siendo la fuente de la Ninja Bag y del inventario:
+	con estas entradas los lanzables nuevos aparecen en el inventario, se pueden
+	equipar en los slots y se recargan con las herramientas de desarrollo (F7).
+	El comportamiento real está en Throwables.Definitions.
+
+	CapacityCost = cuánta capacidad de la bolsa ocupa cada unidad (la bolsa estándar tiene 80).
+]]
+
+	-- ============================================================
+	-- LANZABLES DE EFECTO (Throwables v3)
+	-- ============================================================
+
+	ExplosiveKunai = {
+		Id = "ExplosiveKunai",
+		NinjaBag = {
+			DisplayName = "KUNAI EXPLOSIVO",
+			Subtitle = "ÁREA · CARGA: DETONAR",
+			QAStartingAmount = 6,
+			QAMaxAmount = 6,
+			CapacityCost = 2,
+		},
+	},
+
+	ExplosiveTag = {
+		Id = "ExplosiveTag",
+		NinjaBag = {
+			DisplayName = "SELLO EXPLOSIVO",
+			Subtitle = "MINA · CARGA: OCULTA",
+			QAStartingAmount = 4,
+			QAMaxAmount = 4,
+			CapacityCost = 2,
+		},
+	},
+
+	NinjaWire = {
+		Id = "NinjaWire",
+		NinjaBag = {
+			DisplayName = "HILO NINJA",
+			Subtitle = "GANCHO · CARGA: ATAR",
+			QAStartingAmount = 8,
+			QAMaxAmount = 8,
+			CapacityCost = 1,
+		},
+	},
+
+	Makibishi = {
+		Id = "Makibishi",
+		NinjaBag = {
+			DisplayName = "MAKIBISHI",
+			Subtitle = "ABROJOS · LENTITUD",
+			QAStartingAmount = 5,
+			QAMaxAmount = 5,
+			CapacityCost = 2,
+		},
+	},
+
+	SmokeBomb = {
+		Id = "SmokeBomb",
+		NinjaBag = {
+			DisplayName = "BOMBA DE HUMO",
+			Subtitle = "VISIÓN · CARGA: A TUS PIES",
+			QAStartingAmount = 3,
+			QAMaxAmount = 3,
+			CapacityCost = 2,
+		},
+	},
+
+	FlashBomb = {
+		Id = "FlashBomb",
+		NinjaBag = {
+			DisplayName = "BOMBA DE LUZ",
+			Subtitle = "CIEGA A QUIEN LA MIRA",
+			QAStartingAmount = 3,
+			QAMaxAmount = 3,
+			CapacityCost = 2,
+		},
+	},
+
+	-- v3.1
+	ChakraSeal = {
+		Id = "ChakraSeal",
+		NinjaBag = {
+			DisplayName = "SELLO DE SUPRESIÓN",
+			Subtitle = "SIN JUTSUS · CARGA: ZONA",
+			QAStartingAmount = 4,
+			QAMaxAmount = 4,
+			CapacityCost = 2,
+		},
+	},
+
+	TrackerSeal = {
+		Id = "TrackerSeal",
+		NinjaBag = {
+			DisplayName = "SELLO RASTREADOR",
+			Subtitle = "MARCA · VES A TRAVÉS DE PAREDES",
+			QAStartingAmount = 4,
+			QAMaxAmount = 4,
+			CapacityCost = 1,
+		},
+	},
+
+	PoisonBomb = {
+		Id = "PoisonBomb",
+		NinjaBag = {
+			DisplayName = "BOMBA DE VENENO",
+			Subtitle = "DAÑO POR SEGUNDO · MENOS CHAKRA",
+			QAStartingAmount = 3,
+			QAMaxAmount = 3,
+			CapacityCost = 2,
+		},
+	},
 }
 
 return ProjectileConfigs

@@ -253,11 +253,22 @@ function WindSweep.SanitizeRequest(
 	}
 end
 
-local function spawnSweepPlaceholder(origin: Vector3, direction: Vector3, range: number, halfAngle: number?)
-    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("WaylessWindSweepVFX")
-    if remote and remote:IsA("RemoteEvent") then
-        remote:FireAllClients(origin, direction, range, halfAngle or 70)
-    end
+-- VFX: el servidor solo avisa; cada cliente dibuja (ElementalFX > Wind)
+local ElementalFX = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
+
+local function spawnSweepPlaceholder(origin: Vector3, direction: Vector3, range: number, halfAngle: number?, caster: Model?)
+	ElementalFX.Fire(WindSweep.Id, "Sweep", {
+		Origin = origin,
+		Direction = direction,
+		Range = range,
+		HalfAngle = halfAngle or 70,
+		Caster = caster,
+	})
 end
 
 local function executeSweep(
@@ -571,7 +582,8 @@ local function executeSweep(
 		origin,
 		direction,
 		range,
-		halfAngleDegrees
+		halfAngleDegrees,
+		context.Character
 	)
 end
 

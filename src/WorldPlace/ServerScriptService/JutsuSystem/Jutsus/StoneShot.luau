@@ -5,6 +5,7 @@
 -- Medium-speed rock projectile. Moderate damage + Earth/Heavy.
 -- Placeholder VFX only.
 
+local BarrierTargets = require(game:GetService("ReplicatedStorage"):WaitForChild("Throwables"):WaitForChild("Targets")) -- barreras de llamas negras (Jutsus > BlackWall)
 local RunService = game:GetService("RunService")
 
 local Debris = game:GetService("Debris")
@@ -314,10 +315,13 @@ function StoneShot.SanitizeRequest(
 	}
 end
 
-local StoneShotVFX = require(script:WaitForChild("StoneShotVFX"))
-local function makeRockVisual(position: Vector3, radius: number, owner: Player?): BasePart
-    return StoneShotVFX.Create(position, radius, owner)
-end
+-- VFX: el servidor solo avisa; cada cliente dibuja (ElementalFX > Earth)
+local ElementalFX = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("JutsuSystem")
+		:WaitForChild("Shared")
+		:WaitForChild("ElementalFX")
+)
 
 local function executeProjectile(
 	context: any
@@ -362,16 +366,19 @@ local function executeProjectile(
 		head.Position
 		+ direction * 2.2
 
-	local visual =
-		makeRockVisual(
+	local fxId =
+		ElementalFX.Projectile(
+			StoneShot.Id,
+			context.Character,
 			position,
-			radius,
-			context.Player
+			direction,
+			speed,
+			maxDistance,
+			radius
 		)
 
 	local ignored: {Instance} = {
 		context.Character,
-		visual,
 	}
 
 	local params =
@@ -386,7 +393,7 @@ local function executeProjectile(
 	local alive = true
 	local connection: RBXScriptConnection?
 
-	local function finish()
+	local function finish(hitPosition: Vector3?, hitNormal: Vector3?)
 		if not alive then
 			return
 		end
@@ -398,9 +405,7 @@ local function executeProjectile(
 			connection = nil
 		end
 
-		if visual.Parent then
-			visual:Destroy()
-		end
+		ElementalFX.ProjectileEnd(fxId, hitPosition, hitNormal)
 	end
 
 	connection =
@@ -438,12 +443,12 @@ local function executeProjectile(
 					ignored
 
 					local result =
-					workspace:Spherecast(
+					BarrierTargets.withBarrier(workspace:Spherecast(
 						position,
 						radius,
 						displacement,
 						params
-					)
+					), position, displacement, radius)
 
 					if not result then
 						break
@@ -463,8 +468,7 @@ local function executeProjectile(
 							context.Config.Damage
 						)
 
-						finish()
-						task.defer(StoneShotVFX.Impact, result.Position, result.Normal, radius)
+						finish(result.Position, result.Normal)
 						return
 					end
 
@@ -481,8 +485,7 @@ local function executeProjectile(
 							result.Instance
 						)
 					else
-						finish()
-						task.defer(StoneShotVFX.Impact, result.Position, result.Normal, radius)
+						if BarrierTargets.consumedBy(result, result.Position, direction) then finish() else finish(result.Position, result.Normal) end
 						return
 					end
 				end
@@ -490,28 +493,11 @@ local function executeProjectile(
 				position += displacement
 				travelled += step
 
-				if visual.Parent then
-					StoneShotVFX.Move(
-						visual,
-						CFrame.new(position)
-						* CFrame.Angles(
-							travelled * 0.08,
-							travelled * 0.05,
-							0
-						)
-					)
-				end
-
 				if travelled >= maxDistance then
 					finish()
 				end
 			end
 		)
-
-	Debris:AddItem(
-		visual,
-		maxDistance / speed + 1
-	)
 end
 
 function StoneShot.OnCastStarted(

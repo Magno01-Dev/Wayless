@@ -832,6 +832,12 @@ local function triggerDashVFX(
 	data: CharacterBinding
 )
 
+	-- Invisible tras la sustitución (otro jugador): sin pasos ni polvo que lo delaten
+	if data.character:GetAttribute("SubstitutionHidden") == true
+		and data.character ~= game:GetService("Players").LocalPlayer.Character then
+		return
+	end
+
 	if not data.character.Parent
 		or not data.root.Parent
 		or data.humanoid.Health <= 0 then

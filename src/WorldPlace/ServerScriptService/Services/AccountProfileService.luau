@@ -450,6 +450,17 @@ local function makeDefaultProfile(player: Player): {[string]: any}
 	}
 end
 
+-- Fuerza vital de la vida actual (0–100). nil = 100 (vidas anteriores al sistema y vidas nuevas).
+-- La gestiona LifeForceServer; revivir la devuelve al máximo.
+local LIFE_FORCE_MAX = 100
+
+local function sanitizeLifeForce(value: any): number?
+	if typeof(value) ~= "number" or value ~= value then
+		return nil
+	end
+	return math.clamp(value, 0, LIFE_FORCE_MAX)
+end
+
 local function sanitizeCurrentLife(raw: any, lifeCounter: number): {[string]: any}?
 	if typeof(raw) ~= "table" then
 		return nil
@@ -496,6 +507,10 @@ local function sanitizeCurrentLife(raw: any, lifeCounter: number): {[string]: an
 		FinalDeathAt = tonumber(raw.FinalDeathAt),
 		RevivalCount = safeNonNegativeInt(raw.RevivalCount, 0),
 		LastRevivedAt = tonumber(raw.LastRevivedAt),
+		LifeForce = sanitizeLifeForce(raw.LifeForce),
+		-- Protección de novato (LifeForceServer): perdida para siempre en esta vida y último salvamento
+		NoviceProtectionLost = raw.NoviceProtectionLost == true or nil,
+		NoviceSaveAt = tonumber(raw.NoviceSaveAt),
 		MigrationSource = typeof(raw.MigrationSource) == "string"
 			and raw.MigrationSource
 			or nil,
@@ -1342,6 +1357,8 @@ function AccountProfileService.ReviveCurrentLife(
 		) + 1
 		slot.CurrentLife.LastRevivedAt = now()
 		slot.CurrentLife.FinalDeathAt = nil
+		-- Revivir devuelve la fuerza vital completa
+		slot.CurrentLife.LifeForce = LIFE_FORCE_MAX
 		markDirty(player)
 
 		if not saveInternal(player, "ReviveCurrentLife") then
@@ -1387,6 +1404,7 @@ function AccountProfileService.ReviveCurrentLifeWithToken(
 		local oldRevivalCount = slot.CurrentLife.RevivalCount
 		local oldLastRevivedAt = slot.CurrentLife.LastRevivedAt
 		local oldFinalDeathAt = slot.CurrentLife.FinalDeathAt
+		local oldLifeForce = slot.CurrentLife.LifeForce
 
 		state.Profile.Currencies.RevivalTokens = tokens - 1
 		slot.State = AccountProfileService.SlotStates.Alive
@@ -1398,6 +1416,8 @@ function AccountProfileService.ReviveCurrentLifeWithToken(
 			) + 1
 		slot.CurrentLife.LastRevivedAt = now()
 		slot.CurrentLife.FinalDeathAt = nil
+		-- Revivir devuelve la fuerza vital completa
+		slot.CurrentLife.LifeForce = LIFE_FORCE_MAX
 
 		markDirty(player)
 
@@ -1409,12 +1429,136 @@ function AccountProfileService.ReviveCurrentLifeWithToken(
 			slot.CurrentLife.RevivalCount = oldRevivalCount
 			slot.CurrentLife.LastRevivedAt = oldLastRevivedAt
 			slot.CurrentLife.FinalDeathAt = oldFinalDeathAt
+			slot.CurrentLife.LifeForce = oldLifeForce
 			markDirty(player)
 
 			return false, "ReviveTokenSaveFailed"
 		end
 
 		return true, "LifeRevivedWithToken"
+	end)
+end
+
+-- Fuerza vital (Life Force) ---------------------------------------------------------------
+
+-- Fuerza vital de la vida actual del slot (0–100), o nil si el perfil no está listo.
+function AccountProfileService.GetLifeForce(
+	player: Player,
+	slotId: string
+): number?
+	local state = states[player]
+	if not state or not state.Loaded or state.LoadFailed then
+		return nil
+	end
+
+	local slot = state.Profile.Slots[slotId]
+	if not slot or not slot.CurrentLife then
+		return nil
+	end
+
+	return sanitizeLifeForce(slot.CurrentLife.LifeForce) or LIFE_FORCE_MAX
+end
+
+-- Suma delta (negativo = perder) a la fuerza vital de la vida actual, entre 0 y 100. Solo con la
+-- vida viva. saveNow guarda ya (muertes y desconexión en combate: que salir no la evite).
+-- Devuelve (ok, motivo, nuevo valor). Llegar a 0 NO es un wipe: LifeForceServer manda al
+-- Afterlife (AfterlifeTransferService.HandleFinalDeath) y allí se decide revivir o borrar.
+function AccountProfileService.AdjustLifeForce(
+	player: Player,
+	slotId: string,
+	delta: number,
+	reason: string?,
+	saveNow: boolean?
+): (boolean, string, number?)
+	local newValue: number? = nil
+
+	local ok, why = withMutationLock(player, function()
+		local state = states[player]
+		if not state or not state.Loaded or state.LoadFailed then
+			return false, "AccountProfileNotReady"
+		end
+
+		local slot = state.Profile.Slots[slotId]
+		if not slot or not slot.CurrentLife then
+			return false, "NoCurrentLife"
+		end
+
+		if slot.State ~= AccountProfileService.SlotStates.Alive then
+			return false, "LifeNotAlive"
+		end
+
+		if typeof(delta) ~= "number" or delta ~= delta then
+			return false, "InvalidDelta"
+		end
+
+		local old = sanitizeLifeForce(slot.CurrentLife.LifeForce) or LIFE_FORCE_MAX
+		newValue = math.clamp(old + delta, 0, LIFE_FORCE_MAX)
+		slot.CurrentLife.LifeForce = newValue
+		markDirty(player)
+
+		if saveNow and not saveInternal(player, "AdjustLifeForce:" .. tostring(reason or "?")) then
+			-- Queda en memoria y se guarda en el siguiente guardado
+			return true, "AdjustedSavePending"
+		end
+
+		return true, "Adjusted"
+	end)
+
+	return ok, why, newValue
+end
+
+-- Protección de novato de la vida actual: { Lost = boolean, SaveAt = number? } o nil.
+function AccountProfileService.GetNoviceState(
+	player: Player,
+	slotId: string
+): {[string]: any}?
+	local state = states[player]
+	if not state or not state.Loaded or state.LoadFailed then
+		return nil
+	end
+
+	local slot = state.Profile.Slots[slotId]
+	if not slot or not slot.CurrentLife then
+		return nil
+	end
+
+	return {
+		Lost = slot.CurrentLife.NoviceProtectionLost == true,
+		SaveAt = tonumber(slot.CurrentLife.NoviceSaveAt),
+	}
+end
+
+-- Cambia la protección de novato (solo los campos que no sean nil) y guarda ya.
+function AccountProfileService.SetNoviceState(
+	player: Player,
+	slotId: string,
+	lost: boolean?,
+	saveAt: number?
+): (boolean, string)
+	return withMutationLock(player, function()
+		local state = states[player]
+		if not state or not state.Loaded or state.LoadFailed then
+			return false, "AccountProfileNotReady"
+		end
+
+		local slot = state.Profile.Slots[slotId]
+		if not slot or not slot.CurrentLife then
+			return false, "NoCurrentLife"
+		end
+
+		if lost ~= nil then
+			slot.CurrentLife.NoviceProtectionLost = if lost then true else nil
+		end
+		if saveAt ~= nil then
+			slot.CurrentLife.NoviceSaveAt = saveAt
+		end
+		markDirty(player)
+
+		if not saveInternal(player, "SetNoviceState") then
+			return true, "SavePending"
+		end
+
+		return true, "Saved"
 	end)
 end
 
