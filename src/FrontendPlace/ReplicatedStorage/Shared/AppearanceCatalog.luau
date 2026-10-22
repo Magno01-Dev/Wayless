@@ -2854,6 +2854,10 @@ AppearanceCatalog.GlovesStyles = {
 	},
 }
 
+-- WAYLESS_FACE_HD_CATALOG_V1
+local WaylessFaceHD = require(script.Parent:WaitForChild("FaceHDIntegration"))
+WaylessFaceHD.RegisterCatalog(AppearanceCatalog)
+
 AppearanceCatalog.Defaults = {
 	SkinToneId = "S05",
 
