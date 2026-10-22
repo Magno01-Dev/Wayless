@@ -1,18 +1,10 @@
 --!nonstrict
--- WAYLESS HairAppearance v0.1 CANDIDATE
+-- WAYLESS HairAppearance v0.2 CANDIDATE — size restrictions disabled
 -- Shared, pure cosmetic rules for FrontendPlace and WorldPlace.
 -- Does not modify or scale the R6 body.
 local HairAppearance = {}
 
 HairAppearance.MaxHairIds = 4
-HairAppearance.Bounds = {
-    X = 1.85,          -- local head X: maximum left/right extension
-    MaxY = 1.85,       -- above head center
-    MinY = -2.60,      -- long hair toward shoulders
-    Z = 1.95,          -- front/back extension
-    MaxParts = 36,
-}
-
 -- IDs are deliberately stable, so hair selections persist when clan palette RGBs change.
 -- Candidate palette: final hues still require owner visual QA.
 HairAppearance.Palettes = {
@@ -110,66 +102,6 @@ function HairAppearance.TintAvatarHair(avatar, color)
             HairAppearance.TintAccessory(child, color)
         end
     end
-end
-
--- Bounds use the *loaded* and attached hair in an actual R6 model.
--- AABB of each BasePart is transformed into head-local coordinates.
--- For legacy SpecialMesh, include its Scale/Offset conservatively because
--- BasePart.Size alone may be much smaller than the rendered mesh.
-function HairAppearance.ValidateAvatarHair(avatar, expectedCount)
-    local head = avatar and avatar:FindFirstChild("Head")
-    if not head or not head:IsA("BasePart") then
-        return false, "HairHeadMissing"
-    end
-    local count, partCount = 0, 0
-    local bound = HairAppearance.Bounds
-    for _, child in ipairs(avatar:GetChildren()) do
-        if child:IsA("Accessory") then
-            count += 1
-            local accessoryParts = 0
-            for _, object in ipairs(child:GetDescendants()) do
-                if object:IsA("BasePart") then
-                    accessoryParts += 1
-                    partCount += 1
-                    if partCount > bound.MaxParts then
-                        return false, "HairTooComplex"
-                    end
-                    local size = object.Size
-                    local transform = object.CFrame
-                    local special = object:FindFirstChildOfClass("SpecialMesh")
-                    if special then
-                        size = Vector3.new(
-                            math.max(size.X, math.abs(special.Scale.X)),
-                            math.max(size.Y, math.abs(special.Scale.Y)),
-                            math.max(size.Z, math.abs(special.Scale.Z))
-                        )
-                        transform = transform * CFrame.new(special.Offset)
-                    end
-                    local half = size * 0.5
-                    for _, ix in ipairs({-1, 1}) do
-                        for _, iy in ipairs({-1, 1}) do
-                            for _, iz in ipairs({-1, 1}) do
-                                local point = head.CFrame:PointToObjectSpace(
-                                    transform:PointToWorldSpace(Vector3.new(ix*half.X,iy*half.Y,iz*half.Z))
-                                )
-                                if math.abs(point.X) > bound.X
-                                    or point.Y > bound.MaxY
-                                    or point.Y < bound.MinY
-                                    or math.abs(point.Z) > bound.Z then
-                                    return false, "HairTooLarge"
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-            if accessoryParts == 0 then return false, "HairGeometryMissing" end
-        end
-    end
-    if expectedCount ~= nil and count ~= expectedCount then
-        return false, "HairAssetUnavailable"
-    end
-    return true, "HairSizeReady"
 end
 
 return HairAppearance
