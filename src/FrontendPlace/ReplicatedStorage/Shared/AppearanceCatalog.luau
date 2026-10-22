@@ -1,7 +1,7 @@
 --!strict
 -- ReplicatedStorage > Shared > AppearanceCatalog
 --
--- WAYLESS Appearance Catalog v1.10 - optional gloves + stable 3D wearable definitions.
+-- WAYLESS Appearance Catalog v1.11 CANDIDATE - R6 H/M clothing refresh; legacy preserved.
 --
 -- Data-only catalog shared by Frontend preview and World runtime.
 -- All user-facing strings are English.
@@ -336,7 +336,7 @@ AppearanceCatalog.EyeStyles = {
 	},
 }
 
-AppearanceCatalog.ClothingColors = {
+AppearanceCatalog.LegacyClothingColors = {
 	{
 		Id = "Beige",
 		DisplayName = "BEIGE",
@@ -696,6 +696,78 @@ AppearanceCatalog.ClothingColors = {
 	},
 }
 
+AppearanceCatalog.ClothingColors = {
+	{
+		Id = "Wardrobe",
+		DisplayName = "WARDROBE",
+		TopIds = {
+			"H01_TOP",
+			"H02_TOP",
+			"H03_TOP",
+			"H04_TOP",
+			"H05_TOP",
+			"H06_TOP",
+			"H07_TOP",
+			"H08_TOP",
+			"H09_TOP",
+			"H10_TOP",
+			"H11_TOP",
+			"H12_TOP",
+			"H13_TOP",
+			"H14_TOP",
+			"H15_TOP",
+			"M01_TOP",
+			"M02_TOP",
+			"M03_TOP",
+			"M04_TOP",
+			"M05_TOP",
+			"M06_TOP",
+			"M07_TOP",
+			"M08_TOP",
+			"M09_TOP",
+			"M10_TOP",
+			"M11_TOP",
+			"M12_TOP",
+			"M13_TOP",
+			"M14_TOP",
+			"M15_TOP",
+		},
+		BottomIds = {
+			"H01_BOTTOM",
+			"H02_BOTTOM",
+			"H03_BOTTOM",
+			"H04_BOTTOM",
+			"H05_BOTTOM",
+			"H06_BOTTOM",
+			"H07_BOTTOM",
+			"H08_BOTTOM",
+			"H09_BOTTOM",
+			"H10_BOTTOM",
+			"H11_BOTTOM",
+			"H12_BOTTOM",
+			"H13_BOTTOM",
+			"H14_BOTTOM",
+			"H15_BOTTOM",
+			"M01_BOTTOM",
+			"M02_BOTTOM",
+			"M03_BOTTOM",
+			"M04_BOTTOM",
+			"M05_BOTTOM",
+			"M06_BOTTOM",
+			"M07_BOTTOM",
+			"M08_BOTTOM",
+			"M09_BOTTOM",
+			"M10_BOTTOM",
+			"M11_BOTTOM",
+			"M12_BOTTOM",
+			"M13_BOTTOM",
+			"M14_BOTTOM",
+			"M15_BOTTOM",
+		},
+		Enabled = true,
+	},
+}
+
 AppearanceCatalog.StarterTops = {
 	{
 		Id = "StarterTop_Beige_01",
@@ -703,7 +775,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Beige",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://70521895410432",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Beige_02",
@@ -711,7 +783,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Beige",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://133246561836644",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Beige_03",
@@ -719,7 +791,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Beige",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://96324192533500",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Beige_04",
@@ -727,7 +799,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Beige",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://109455122745074",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Beige_05",
@@ -735,7 +807,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Beige",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://92348081143714",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Beige_06",
@@ -743,7 +815,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Beige",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://130138497674991",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Blue_01",
@@ -751,7 +823,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Blue",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://79264608243905",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Blue_02",
@@ -759,7 +831,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Blue",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://139535804536679",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Blue_03",
@@ -767,7 +839,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Blue",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://114154715061102",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Blue_04",
@@ -775,7 +847,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Blue",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://84636518116569",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Blue_05",
@@ -783,7 +855,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Blue",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://90059241380602",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Blue_06",
@@ -791,7 +863,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Blue",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://79162086313425",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Brown_01",
@@ -799,7 +871,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Brown",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://74745067925538",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Brown_02",
@@ -807,7 +879,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Brown",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://131816697716836",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Brown_03",
@@ -815,7 +887,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Brown",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://125105638536839",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Brown_04",
@@ -823,7 +895,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Brown",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://111803660434122",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Brown_05",
@@ -831,7 +903,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Brown",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://105358771952033",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Brown_06",
@@ -839,7 +911,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Brown",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://134313158846036",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Charcoal_01",
@@ -847,7 +919,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Charcoal",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://114096541681827",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Charcoal_02",
@@ -855,7 +927,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Charcoal",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://74479969120854",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Charcoal_03",
@@ -863,7 +935,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Charcoal",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://122393939193599",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Charcoal_04",
@@ -871,7 +943,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Charcoal",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://111203259623556",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Charcoal_05",
@@ -879,7 +951,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Charcoal",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://86804022818297",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Charcoal_06",
@@ -887,7 +959,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Charcoal",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://91091832361646",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DarkBrown_01",
@@ -895,7 +967,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DarkBrown",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://134890506049357",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DarkBrown_02",
@@ -903,7 +975,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DarkBrown",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://77246470450738",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DarkBrown_03",
@@ -911,7 +983,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DarkBrown",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://90974125790036",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DarkBrown_04",
@@ -919,7 +991,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DarkBrown",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://81044071228616",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DarkBrown_05",
@@ -927,7 +999,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DarkBrown",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://76263144227043",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DarkBrown_06",
@@ -935,7 +1007,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DarkBrown",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://107399337930899",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DarkPurple_01",
@@ -943,7 +1015,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DarkPurple",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://127774041700931",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DarkPurple_02",
@@ -951,7 +1023,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DarkPurple",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://139779095117012",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DarkPurple_03",
@@ -959,7 +1031,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DarkPurple",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://139090258471457",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DarkPurple_04",
@@ -967,7 +1039,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DarkPurple",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://99222423539694",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DarkPurple_05",
@@ -975,7 +1047,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DarkPurple",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://88779421977807",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DarkPurple_06",
@@ -983,7 +1055,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DarkPurple",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://128281856254797",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DeepRed_01",
@@ -991,7 +1063,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DeepRed",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://80023850237388",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DeepRed_02",
@@ -999,7 +1071,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DeepRed",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://92000647625001",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DeepRed_03",
@@ -1007,7 +1079,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DeepRed",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://96112427479178",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DeepRed_04",
@@ -1015,7 +1087,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DeepRed",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://94796890816073",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DeepRed_05",
@@ -1023,7 +1095,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DeepRed",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://103601036013839",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_DeepRed_06",
@@ -1031,7 +1103,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "DeepRed",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://87586841864436",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Gray_01",
@@ -1039,7 +1111,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Gray",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://85040754330057",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Gray_02",
@@ -1047,7 +1119,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Gray",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://111154465321433",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Gray_03",
@@ -1055,7 +1127,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Gray",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://83150342758969",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Gray_04",
@@ -1063,7 +1135,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Gray",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://125667056262708",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Gray_05",
@@ -1071,7 +1143,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Gray",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://78350859269534",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Gray_06",
@@ -1079,7 +1151,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Gray",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://101893141483073",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Green_01",
@@ -1087,7 +1159,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Green",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://91452635408871",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Green_02",
@@ -1095,7 +1167,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Green",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://136037892126486",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Green_03",
@@ -1103,7 +1175,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Green",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://72867761039444",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Green_04",
@@ -1111,7 +1183,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Green",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://79449292328177",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Green_05",
@@ -1119,7 +1191,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Green",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://134654109370411",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Green_06",
@@ -1127,7 +1199,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Green",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://132869836698792",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_LightBlue_01",
@@ -1135,7 +1207,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "LightBlue",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://93134621400057",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_LightBlue_02",
@@ -1143,7 +1215,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "LightBlue",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://118357367672974",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_LightBlue_03",
@@ -1151,7 +1223,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "LightBlue",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://98212661483654",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_LightBlue_04",
@@ -1159,7 +1231,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "LightBlue",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://101507220748126",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_LightBlue_05",
@@ -1167,7 +1239,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "LightBlue",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://124317615793791",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_LightBlue_06",
@@ -1175,7 +1247,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "LightBlue",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://108795357811903",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_LightPurple_01",
@@ -1183,7 +1255,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "LightPurple",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://70408866215016",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_LightPurple_02",
@@ -1191,7 +1263,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "LightPurple",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://74286142617033",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_LightPurple_03",
@@ -1199,7 +1271,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "LightPurple",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://77224194323743",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_LightPurple_04",
@@ -1207,7 +1279,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "LightPurple",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://133821793654033",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_LightPurple_05",
@@ -1215,7 +1287,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "LightPurple",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://97204332512014",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_LightPurple_06",
@@ -1223,7 +1295,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "LightPurple",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://79815145008474",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_MutedGreen_01",
@@ -1231,7 +1303,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "MutedGreen",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://93501780318982",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_MutedGreen_02",
@@ -1239,7 +1311,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "MutedGreen",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://132889864791326",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_MutedGreen_03",
@@ -1247,7 +1319,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "MutedGreen",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://111811255369322",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_MutedGreen_04",
@@ -1255,7 +1327,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "MutedGreen",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://116140038500221",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_MutedGreen_05",
@@ -1263,7 +1335,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "MutedGreen",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://82823471672887",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_MutedGreen_06",
@@ -1271,7 +1343,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "MutedGreen",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://123586084197972",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_OffWhite_01",
@@ -1279,7 +1351,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "OffWhite",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://103968678820112",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_OffWhite_02",
@@ -1287,7 +1359,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "OffWhite",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://98125243032736",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_OffWhite_03",
@@ -1295,7 +1367,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "OffWhite",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://136428420324011",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_OffWhite_04",
@@ -1303,7 +1375,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "OffWhite",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://123699063525231",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_OffWhite_05",
@@ -1311,7 +1383,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "OffWhite",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://80269479723387",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_OffWhite_06",
@@ -1319,7 +1391,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "OffWhite",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://72406143361229",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Orange_01",
@@ -1327,7 +1399,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Orange",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://74401484444080",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Orange_02",
@@ -1335,7 +1407,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Orange",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://85466814370930",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Orange_03",
@@ -1343,7 +1415,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Orange",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://74139879658331",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Orange_04",
@@ -1351,7 +1423,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Orange",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://117559103224287",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Orange_05",
@@ -1359,7 +1431,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Orange",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://78083171084239",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Orange_06",
@@ -1367,7 +1439,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Orange",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://114698436556042",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Pink_01",
@@ -1375,7 +1447,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Pink",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://79851931296877",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Pink_02",
@@ -1383,7 +1455,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Pink",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://85769493279590",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Pink_03",
@@ -1391,7 +1463,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Pink",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://71402203303763",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Pink_04",
@@ -1399,7 +1471,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Pink",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://91545349752114",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Pink_05",
@@ -1407,7 +1479,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Pink",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://105093172892129",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Pink_06",
@@ -1415,7 +1487,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Pink",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://134718851471015",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_SlateGray_01",
@@ -1423,7 +1495,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "SlateGray",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://117687230906987",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_SlateGray_02",
@@ -1431,7 +1503,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "SlateGray",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://132517911563206",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_SlateGray_03",
@@ -1439,7 +1511,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "SlateGray",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://86585025405323",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_SlateGray_04",
@@ -1447,7 +1519,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "SlateGray",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://76161513538680",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_SlateGray_05",
@@ -1455,7 +1527,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "SlateGray",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://98085634970759",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_SlateGray_06",
@@ -1463,7 +1535,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "SlateGray",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://91266364818594",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Yellow_01",
@@ -1471,7 +1543,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Yellow",
 		VariantIndex = 1,
 		ShirtTemplate = "rbxassetid://85678936189096",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Yellow_02",
@@ -1479,7 +1551,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Yellow",
 		VariantIndex = 2,
 		ShirtTemplate = "rbxassetid://127577639995087",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Yellow_03",
@@ -1487,7 +1559,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Yellow",
 		VariantIndex = 3,
 		ShirtTemplate = "rbxassetid://133048641837924",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Yellow_04",
@@ -1495,7 +1567,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Yellow",
 		VariantIndex = 4,
 		ShirtTemplate = "rbxassetid://74338491865392",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Yellow_05",
@@ -1503,7 +1575,7 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Yellow",
 		VariantIndex = 5,
 		ShirtTemplate = "rbxassetid://121597835372865",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterTop_Yellow_06",
@@ -1511,7 +1583,217 @@ AppearanceCatalog.StarterTops = {
 		ColorId = "Yellow",
 		VariantIndex = 6,
 		ShirtTemplate = "rbxassetid://75381376556425",
+		Enabled = false,
+	},
+	{
+		Id = "H01_TOP",
+		DisplayName = "H01 TOP",
+		ShirtTemplate = "rbxassetid://77282662705653",
 		Enabled = true,
+	},
+	{
+		Id = "H02_TOP",
+		DisplayName = "H02 TOP",
+		ShirtTemplate = "rbxassetid://115794498196657",
+		Enabled = true,
+	},
+	{
+		Id = "H03_TOP",
+		DisplayName = "H03 TOP",
+		ShirtTemplate = "rbxassetid://105934450215075",
+		Enabled = true,
+	},
+	{
+		Id = "H04_TOP",
+		DisplayName = "H04 TOP",
+		ShirtTemplate = "rbxassetid://84833534718322",
+		Enabled = true,
+	},
+	{
+		Id = "H05_TOP",
+		DisplayName = "H05 TOP",
+		ShirtTemplate = "rbxassetid://104019442142191",
+		Enabled = true,
+	},
+	{
+		Id = "H06_TOP",
+		DisplayName = "H06 TOP",
+		ShirtTemplate = "rbxassetid://73451666641304",
+		Enabled = true,
+	},
+	{
+		Id = "H07_TOP",
+		DisplayName = "H07 TOP",
+		ShirtTemplate = "rbxassetid://94413598920656",
+		Enabled = true,
+	},
+	{
+		Id = "H08_TOP",
+		DisplayName = "H08 TOP",
+		ShirtTemplate = "rbxassetid://131992738342344",
+		Enabled = true,
+	},
+	{
+		Id = "H09_TOP",
+		DisplayName = "H09 TOP",
+		ShirtTemplate = "rbxassetid://106265957561994",
+		Enabled = true,
+	},
+	{
+		Id = "H10_TOP",
+		DisplayName = "H10 TOP",
+		ShirtTemplate = "rbxassetid://121270771280224",
+		Enabled = true,
+	},
+	{
+		Id = "H11_TOP",
+		DisplayName = "H11 TOP",
+		ShirtTemplate = "rbxassetid://128503285232712",
+		Enabled = true,
+	},
+	{
+		Id = "H12_TOP",
+		DisplayName = "H12 TOP",
+		ShirtTemplate = "rbxassetid://110006115233261",
+		Enabled = true,
+	},
+	{
+		Id = "H13_TOP",
+		DisplayName = "H13 TOP",
+		ShirtTemplate = "rbxassetid://104239193631156",
+		Enabled = true,
+	},
+	{
+		Id = "H14_TOP",
+		DisplayName = "H14 TOP",
+		ShirtTemplate = "rbxassetid://111521149801119",
+		Enabled = true,
+	},
+	{
+		Id = "H15_TOP",
+		DisplayName = "H15 TOP",
+		ShirtTemplate = "rbxassetid://79578251169828",
+		Enabled = true,
+	},
+	{
+		Id = "M01_TOP",
+		DisplayName = "M01 TOP",
+		ShirtTemplate = "rbxassetid://135751576245135",
+		Enabled = true,
+	},
+	{
+		Id = "M02_TOP",
+		DisplayName = "M02 TOP",
+		ShirtTemplate = "rbxassetid://88406989672938",
+		Enabled = true,
+	},
+	{
+		Id = "M03_TOP",
+		DisplayName = "M03 TOP",
+		ShirtTemplate = "rbxassetid://129797025925038",
+		Enabled = true,
+	},
+	{
+		Id = "M04_TOP",
+		DisplayName = "M04 TOP",
+		ShirtTemplate = "rbxassetid://110767544441480",
+		Enabled = true,
+	},
+	{
+		Id = "M05_TOP",
+		DisplayName = "M05 TOP",
+		ShirtTemplate = "rbxassetid://114272916476662",
+		Enabled = true,
+	},
+	{
+		Id = "M06_TOP",
+		DisplayName = "M06 TOP",
+		ShirtTemplate = "rbxassetid://97575799721225",
+		Enabled = true,
+	},
+	{
+		Id = "M07_TOP",
+		DisplayName = "M07 TOP",
+		ShirtTemplate = "rbxassetid://109920628281539",
+		Enabled = true,
+	},
+	{
+		Id = "M08_TOP",
+		DisplayName = "M08 TOP",
+		ShirtTemplate = "rbxassetid://112864103029858",
+		Enabled = true,
+	},
+	{
+		Id = "M09_TOP",
+		DisplayName = "M09 TOP",
+		ShirtTemplate = "rbxassetid://137910487678997",
+		Enabled = true,
+	},
+	{
+		Id = "M10_TOP",
+		DisplayName = "M10 TOP",
+		ShirtTemplate = "rbxassetid://103124177229774",
+		Enabled = true,
+	},
+	{
+		Id = "M11_TOP",
+		DisplayName = "M11 TOP",
+		ShirtTemplate = "rbxassetid://70398344816590",
+		Enabled = true,
+	},
+	{
+		Id = "M12_TOP",
+		DisplayName = "M12 TOP",
+		ShirtTemplate = "rbxassetid://100159461981314",
+		Enabled = true,
+	},
+	{
+		Id = "M13_TOP",
+		DisplayName = "M13 TOP",
+		ShirtTemplate = "rbxassetid://138227021607093",
+		Enabled = true,
+	},
+	{
+		Id = "M14_TOP",
+		DisplayName = "M14 TOP",
+		ShirtTemplate = "rbxassetid://101040736898065",
+		Enabled = true,
+	},
+	{
+		Id = "M15_TOP",
+		DisplayName = "M15 TOP",
+		ShirtTemplate = "rbxassetid://115591861542737",
+		Enabled = true,
+	},
+	{
+		Id = "U01_TOP",
+		DisplayName = "U01 TOP",
+		ShirtTemplate = "rbxassetid://103885314189934",
+		Enabled = false,
+	},
+	{
+		Id = "U01B_TOP",
+		DisplayName = "U01B TOP",
+		ShirtTemplate = "rbxassetid://87002815907882",
+		Enabled = false,
+	},
+	{
+		Id = "ANBU01_TOP",
+		DisplayName = "ANBU01 TOP",
+		ShirtTemplate = "rbxassetid://89415554251469",
+		Enabled = false,
+	},
+	{
+		Id = "ANBU02_TOP",
+		DisplayName = "ANBU02 TOP",
+		ShirtTemplate = "rbxassetid://105306988371172",
+		Enabled = false,
+	},
+	{
+		Id = "ANBU03_TOP",
+		DisplayName = "ANBU03 TOP",
+		ShirtTemplate = "rbxassetid://139783018810103",
+		Enabled = false,
 	},
 }
 
@@ -1522,7 +1804,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Beige",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://115442403666948",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Beige_02",
@@ -1530,7 +1812,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Beige",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://93513181509708",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Beige_03",
@@ -1538,7 +1820,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Beige",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://94869159030731",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Beige_04",
@@ -1546,7 +1828,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Beige",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://75148316547965",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Beige_05",
@@ -1554,7 +1836,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Beige",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://119854320976649",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Beige_06",
@@ -1562,7 +1844,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Beige",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://103665166736917",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Blue_01",
@@ -1570,7 +1852,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Blue",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://108071810527062",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Blue_02",
@@ -1578,7 +1860,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Blue",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://106469458108494",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Blue_03",
@@ -1586,7 +1868,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Blue",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://125893228499026",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Blue_04",
@@ -1594,7 +1876,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Blue",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://103767881209955",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Blue_05",
@@ -1602,7 +1884,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Blue",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://115919311029788",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Blue_06",
@@ -1610,7 +1892,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Blue",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://133469326354270",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Brown_01",
@@ -1618,7 +1900,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Brown",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://125779362590745",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Brown_02",
@@ -1626,7 +1908,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Brown",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://138875896374851",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Brown_03",
@@ -1634,7 +1916,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Brown",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://90834773223064",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Brown_04",
@@ -1642,7 +1924,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Brown",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://80968613909695",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Brown_05",
@@ -1650,7 +1932,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Brown",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://99932278601201",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Brown_06",
@@ -1658,7 +1940,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Brown",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://102512284506298",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Charcoal_01",
@@ -1666,7 +1948,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Charcoal",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://138637941176160",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Charcoal_02",
@@ -1674,7 +1956,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Charcoal",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://125268517209813",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Charcoal_03",
@@ -1682,7 +1964,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Charcoal",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://84616465102508",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Charcoal_04",
@@ -1690,7 +1972,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Charcoal",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://105365058428452",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Charcoal_05",
@@ -1698,7 +1980,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Charcoal",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://121468851596596",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Charcoal_06",
@@ -1706,7 +1988,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Charcoal",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://103433775017127",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DarkBrown_01",
@@ -1714,7 +1996,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DarkBrown",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://128209413747404",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DarkBrown_02",
@@ -1722,7 +2004,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DarkBrown",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://114501465370399",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DarkBrown_03",
@@ -1730,7 +2012,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DarkBrown",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://104271079264347",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DarkBrown_04",
@@ -1738,7 +2020,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DarkBrown",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://95055665931547",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DarkBrown_05",
@@ -1746,7 +2028,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DarkBrown",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://78345334798229",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DarkBrown_06",
@@ -1754,7 +2036,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DarkBrown",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://117851110938871",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DarkPurple_01",
@@ -1762,7 +2044,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DarkPurple",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://116836260187105",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DarkPurple_02",
@@ -1770,7 +2052,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DarkPurple",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://77547320169776",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DarkPurple_03",
@@ -1778,7 +2060,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DarkPurple",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://134506953321774",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DarkPurple_04",
@@ -1786,7 +2068,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DarkPurple",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://138658221248198",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DarkPurple_05",
@@ -1794,7 +2076,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DarkPurple",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://103449958814112",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DarkPurple_06",
@@ -1802,7 +2084,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DarkPurple",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://105999317677773",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DeepRed_01",
@@ -1810,7 +2092,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DeepRed",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://105658135998706",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DeepRed_02",
@@ -1818,7 +2100,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DeepRed",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://79896317333529",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DeepRed_03",
@@ -1826,7 +2108,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DeepRed",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://115428652500650",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DeepRed_04",
@@ -1834,7 +2116,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DeepRed",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://111403900410897",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DeepRed_05",
@@ -1842,7 +2124,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DeepRed",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://115652385311791",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_DeepRed_06",
@@ -1850,7 +2132,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "DeepRed",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://78721139728318",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Gray_01",
@@ -1858,7 +2140,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Gray",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://118969368396781",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Gray_02",
@@ -1866,7 +2148,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Gray",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://116738218702630",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Gray_03",
@@ -1874,7 +2156,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Gray",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://85669124672013",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Gray_04",
@@ -1882,7 +2164,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Gray",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://104596346901705",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Gray_05",
@@ -1890,7 +2172,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Gray",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://140551331019530",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Gray_06",
@@ -1898,7 +2180,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Gray",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://76578160925449",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Green_01",
@@ -1906,7 +2188,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Green",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://116439775363897",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Green_02",
@@ -1914,7 +2196,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Green",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://99109783291418",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Green_03",
@@ -1922,7 +2204,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Green",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://91787117719447",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Green_04",
@@ -1930,7 +2212,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Green",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://121959162731096",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Green_05",
@@ -1938,7 +2220,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Green",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://137504402457639",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Green_06",
@@ -1946,7 +2228,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Green",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://76529872611289",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_LightBlue_01",
@@ -1954,7 +2236,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "LightBlue",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://95499775655427",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_LightBlue_02",
@@ -1962,7 +2244,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "LightBlue",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://105449298751443",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_LightBlue_03",
@@ -1970,7 +2252,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "LightBlue",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://111690544128425",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_LightBlue_04",
@@ -1978,7 +2260,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "LightBlue",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://108685545928323",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_LightBlue_05",
@@ -1986,7 +2268,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "LightBlue",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://90066150390407",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_LightBlue_06",
@@ -1994,7 +2276,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "LightBlue",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://126453259835038",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_LightPurple_01",
@@ -2002,7 +2284,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "LightPurple",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://94260190034943",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_LightPurple_02",
@@ -2010,7 +2292,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "LightPurple",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://80193617216799",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_LightPurple_03",
@@ -2018,7 +2300,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "LightPurple",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://97801180973935",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_LightPurple_04",
@@ -2026,7 +2308,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "LightPurple",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://120443783161812",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_LightPurple_05",
@@ -2034,7 +2316,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "LightPurple",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://127586377396365",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_LightPurple_06",
@@ -2042,7 +2324,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "LightPurple",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://80937679958671",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_MutedGreen_01",
@@ -2050,7 +2332,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "MutedGreen",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://84919000341290",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_MutedGreen_02",
@@ -2058,7 +2340,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "MutedGreen",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://115682632268863",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_MutedGreen_03",
@@ -2066,7 +2348,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "MutedGreen",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://110167537261917",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_MutedGreen_04",
@@ -2074,7 +2356,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "MutedGreen",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://82897679510818",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_MutedGreen_05",
@@ -2082,7 +2364,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "MutedGreen",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://109529121336278",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_MutedGreen_06",
@@ -2090,7 +2372,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "MutedGreen",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://132115858765524",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_OffWhite_01",
@@ -2098,7 +2380,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "OffWhite",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://114626150337819",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_OffWhite_02",
@@ -2106,7 +2388,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "OffWhite",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://75507575508512",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_OffWhite_03",
@@ -2114,7 +2396,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "OffWhite",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://112927428810465",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_OffWhite_04",
@@ -2122,7 +2404,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "OffWhite",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://113569648185386",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_OffWhite_05",
@@ -2130,7 +2412,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "OffWhite",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://86787586630195",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_OffWhite_06",
@@ -2138,7 +2420,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "OffWhite",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://98590786541996",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Orange_01",
@@ -2146,7 +2428,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Orange",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://72032060773686",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Orange_02",
@@ -2154,7 +2436,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Orange",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://103861827663879",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Orange_03",
@@ -2162,7 +2444,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Orange",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://93004603379676",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Orange_04",
@@ -2170,7 +2452,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Orange",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://112484245413771",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Orange_05",
@@ -2178,7 +2460,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Orange",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://133766451243688",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Orange_06",
@@ -2186,7 +2468,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Orange",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://77326736517052",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Pink_01",
@@ -2194,7 +2476,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Pink",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://129612130645712",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Pink_02",
@@ -2202,7 +2484,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Pink",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://94113045273668",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Pink_03",
@@ -2210,7 +2492,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Pink",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://79860271593871",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Pink_04",
@@ -2218,7 +2500,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Pink",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://90324680242737",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Pink_05",
@@ -2226,7 +2508,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Pink",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://119154700443040",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Pink_06",
@@ -2234,7 +2516,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Pink",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://88225242831261",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_SlateGray_01",
@@ -2242,7 +2524,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "SlateGray",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://104679834273142",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_SlateGray_02",
@@ -2250,7 +2532,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "SlateGray",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://81301415281589",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_SlateGray_03",
@@ -2258,7 +2540,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "SlateGray",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://116986878104524",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_SlateGray_04",
@@ -2266,7 +2548,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "SlateGray",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://115310197191164",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_SlateGray_05",
@@ -2274,7 +2556,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "SlateGray",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://133502532243146",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_SlateGray_06",
@@ -2282,7 +2564,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "SlateGray",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://105214847382971",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Yellow_01",
@@ -2290,7 +2572,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Yellow",
 		VariantIndex = 1,
 		PantsTemplate = "rbxassetid://73591284164673",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Yellow_02",
@@ -2298,7 +2580,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Yellow",
 		VariantIndex = 2,
 		PantsTemplate = "rbxassetid://103231347251799",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Yellow_03",
@@ -2306,7 +2588,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Yellow",
 		VariantIndex = 3,
 		PantsTemplate = "rbxassetid://119983733431837",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Yellow_04",
@@ -2314,7 +2596,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Yellow",
 		VariantIndex = 4,
 		PantsTemplate = "rbxassetid://131425407685408",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Yellow_05",
@@ -2322,7 +2604,7 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Yellow",
 		VariantIndex = 5,
 		PantsTemplate = "rbxassetid://107058005097176",
-		Enabled = true,
+		Enabled = false,
 	},
 	{
 		Id = "StarterBottom_Yellow_06",
@@ -2330,10 +2612,223 @@ AppearanceCatalog.StarterBottoms = {
 		ColorId = "Yellow",
 		VariantIndex = 6,
 		PantsTemplate = "rbxassetid://120111150937328",
+		Enabled = false,
+	},
+	{
+		Id = "H01_BOTTOM",
+		DisplayName = "H01 BOTTOM",
+		PantsTemplate = "rbxassetid://91285267969755",
 		Enabled = true,
+	},
+	{
+		Id = "H02_BOTTOM",
+		DisplayName = "H02 BOTTOM",
+		PantsTemplate = "rbxassetid://128412633642879",
+		Enabled = true,
+	},
+	{
+		Id = "H03_BOTTOM",
+		DisplayName = "H03 BOTTOM",
+		PantsTemplate = "rbxassetid://132203816866642",
+		Enabled = true,
+	},
+	{
+		Id = "H04_BOTTOM",
+		DisplayName = "H04 BOTTOM",
+		PantsTemplate = "rbxassetid://85384169681262",
+		Enabled = true,
+	},
+	{
+		Id = "H05_BOTTOM",
+		DisplayName = "H05 BOTTOM",
+		PantsTemplate = "rbxassetid://90895295313423",
+		Enabled = true,
+	},
+	{
+		Id = "H06_BOTTOM",
+		DisplayName = "H06 BOTTOM",
+		PantsTemplate = "rbxassetid://73238459109513",
+		Enabled = true,
+	},
+	{
+		Id = "H07_BOTTOM",
+		DisplayName = "H07 BOTTOM",
+		PantsTemplate = "rbxassetid://98201471826515",
+		Enabled = true,
+	},
+	{
+		Id = "H08_BOTTOM",
+		DisplayName = "H08 BOTTOM",
+		PantsTemplate = "rbxassetid://127062445071007",
+		Enabled = true,
+	},
+	{
+		Id = "H09_BOTTOM",
+		DisplayName = "H09 BOTTOM",
+		PantsTemplate = "rbxassetid://118187737868096",
+		Enabled = true,
+	},
+	{
+		Id = "H10_BOTTOM",
+		DisplayName = "H10 BOTTOM",
+		PantsTemplate = "rbxassetid://132787121367797",
+		Enabled = true,
+	},
+	{
+		Id = "H11_BOTTOM",
+		DisplayName = "H11 BOTTOM",
+		PantsTemplate = "rbxassetid://137247907423403",
+		Enabled = true,
+	},
+	{
+		Id = "H12_BOTTOM",
+		DisplayName = "H12 BOTTOM",
+		PantsTemplate = "rbxassetid://107060461398093",
+		Enabled = true,
+	},
+	{
+		Id = "H13_BOTTOM",
+		DisplayName = "H13 BOTTOM",
+		PantsTemplate = "rbxassetid://129314244006606",
+		Enabled = true,
+	},
+	{
+		Id = "H14_BOTTOM",
+		DisplayName = "H14 BOTTOM",
+		PantsTemplate = "rbxassetid://103051923169944",
+		Enabled = true,
+	},
+	{
+		Id = "H15_BOTTOM",
+		DisplayName = "H15 BOTTOM",
+		PantsTemplate = "rbxassetid://128912818056811",
+		Enabled = true,
+	},
+	{
+		Id = "M01_BOTTOM",
+		DisplayName = "M01 BOTTOM",
+		PantsTemplate = "rbxassetid://103795493464615",
+		Enabled = true,
+	},
+	{
+		Id = "M02_BOTTOM",
+		DisplayName = "M02 BOTTOM",
+		PantsTemplate = "rbxassetid://83779482916181",
+		Enabled = true,
+	},
+	{
+		Id = "M03_BOTTOM",
+		DisplayName = "M03 BOTTOM",
+		PantsTemplate = "rbxassetid://119008351885210",
+		Enabled = true,
+	},
+	{
+		Id = "M04_BOTTOM",
+		DisplayName = "M04 BOTTOM",
+		PantsTemplate = "rbxassetid://139467088062391",
+		Enabled = true,
+	},
+	{
+		Id = "M05_BOTTOM",
+		DisplayName = "M05 BOTTOM",
+		PantsTemplate = "rbxassetid://117535798335761",
+		Enabled = true,
+	},
+	{
+		Id = "M06_BOTTOM",
+		DisplayName = "M06 BOTTOM",
+		PantsTemplate = "rbxassetid://117478898972481",
+		Enabled = true,
+	},
+	{
+		Id = "M07_BOTTOM",
+		DisplayName = "M07 BOTTOM",
+		PantsTemplate = "rbxassetid://107047152200226",
+		Enabled = true,
+	},
+	{
+		Id = "M08_BOTTOM",
+		DisplayName = "M08 BOTTOM",
+		PantsTemplate = "rbxassetid://103581825642156",
+		Enabled = true,
+	},
+	{
+		Id = "M09_BOTTOM",
+		DisplayName = "M09 BOTTOM",
+		PantsTemplate = "rbxassetid://121967857095442",
+		Enabled = true,
+	},
+	{
+		Id = "M10_BOTTOM",
+		DisplayName = "M10 BOTTOM",
+		PantsTemplate = "rbxassetid://111848032530479",
+		Enabled = true,
+	},
+	{
+		Id = "M11_BOTTOM",
+		DisplayName = "M11 BOTTOM",
+		PantsTemplate = "rbxassetid://98248136905094",
+		Enabled = true,
+	},
+	{
+		Id = "M12_BOTTOM",
+		DisplayName = "M12 BOTTOM",
+		PantsTemplate = "rbxassetid://138484979500715",
+		Enabled = true,
+	},
+	{
+		Id = "M13_BOTTOM",
+		DisplayName = "M13 BOTTOM",
+		PantsTemplate = "rbxassetid://89979154893769",
+		Enabled = true,
+	},
+	{
+		Id = "M14_BOTTOM",
+		DisplayName = "M14 BOTTOM",
+		PantsTemplate = "rbxassetid://96988929625343",
+		Enabled = true,
+	},
+	{
+		Id = "M15_BOTTOM",
+		DisplayName = "M15 BOTTOM",
+		PantsTemplate = "rbxassetid://129421314725812",
+		Enabled = true,
+	},
+	{
+		Id = "U01_BOTTOM",
+		DisplayName = "U01 BOTTOM",
+		PantsTemplate = "rbxassetid://94585484625397",
+		Enabled = false,
+	},
+	{
+		Id = "U01B_BOTTOM",
+		DisplayName = "U01B BOTTOM",
+		PantsTemplate = "rbxassetid://128595239715208",
+		Enabled = false,
+	},
+	{
+		Id = "ANBU_SHARED_BOTTOM",
+		DisplayName = "ANBU BOTTOM",
+		PantsTemplate = "rbxassetid://106925469772959",
+		Enabled = false,
 	},
 }
 
+
+
+-- Gameplay-only outfits: deliberately absent from Character Creator Wardrobe.
+-- ANBU variants share ANBU_SHARED_BOTTOM. Enabling gameplay equip comes later.
+AppearanceCatalog.GameplayOutfits = {
+	U01 = { Id = "U01", DisplayName = "U01", TopId = "U01_TOP", BottomId = "U01_BOTTOM", ShirtTemplate = "rbxassetid://103885314189934", PantsTemplate = "rbxassetid://94585484625397", Enabled = false },
+	U01B = { Id = "U01B", DisplayName = "U01B", TopId = "U01B_TOP", BottomId = "U01B_BOTTOM", ShirtTemplate = "rbxassetid://87002815907882", PantsTemplate = "rbxassetid://128595239715208", Enabled = false },
+	ANBU01 = { Id = "ANBU01", DisplayName = "ANBU01", TopId = "ANBU01_TOP", BottomId = "ANBU_SHARED_BOTTOM", ShirtTemplate = "rbxassetid://89415554251469", PantsTemplate = "rbxassetid://106925469772959", Enabled = false },
+	ANBU02 = { Id = "ANBU02", DisplayName = "ANBU02", TopId = "ANBU02_TOP", BottomId = "ANBU_SHARED_BOTTOM", ShirtTemplate = "rbxassetid://105306988371172", PantsTemplate = "rbxassetid://106925469772959", Enabled = false },
+	ANBU03 = { Id = "ANBU03", DisplayName = "ANBU03", TopId = "ANBU03_TOP", BottomId = "ANBU_SHARED_BOTTOM", ShirtTemplate = "rbxassetid://139783018810103", PantsTemplate = "rbxassetid://106925469772959", Enabled = false },
+}
+
+function AppearanceCatalog.GetGameplayOutfit(id: string): {[string]: any}?
+	return AppearanceCatalog.GameplayOutfits[id]
+end
 
 AppearanceCatalog.ShoesStyles = {
 	{
@@ -2373,8 +2868,8 @@ AppearanceCatalog.Defaults = {
 	ShoesStyleId = "Shoes_01",
 	GlovesStyleId = "Gloves_None",
 
-	StarterTopId = "StarterTop_Beige_01",
-	StarterBottomId = "StarterBottom_Beige_01",
+	StarterTopId = "H01_TOP",
+	StarterBottomId = "H01_BOTTOM",
 }
 
 -- EyeStyleId is the permanent base eye shape selected by the player.
