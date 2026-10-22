@@ -1,7 +1,7 @@
 --!strict
 -- StarterPlayer > StarterPlayerScripts > WAYLESSDevMenu
 --
--- WAYLESS unified developer menu v1.4 - Inventory Dev Tools.
+-- WAYLESS unified developer menu v1.5 - Clan / World / QA Techniques / Ninja Bag.
 --
 -- Toggle: F7
 --
@@ -235,8 +235,8 @@ panel.Position =
 
 panel.Size =
 	UDim2.fromOffset(
-		620,
-		560
+		760,
+		600
 	)
 
 panel.BackgroundTransparency =
@@ -316,7 +316,7 @@ feedback.BackgroundTransparency =
 	1
 
 feedback.Text =
-	"F7 toggles menu."
+	"F7 toggles menu. Scroll tabs horizontally for Dojutsu / World / Techniques / Ninja Bag."
 
 feedback.TextSize =
 	12
@@ -331,7 +331,7 @@ feedback.Parent =
 	panel
 
 local tabBar =
-	Instance.new("Frame")
+	Instance.new("ScrollingFrame")
 
 tabBar.Size =
 	UDim2.new(
@@ -350,6 +350,12 @@ tabBar.Position =
 tabBar.BackgroundTransparency =
 	1
 
+tabBar.ScrollBarThickness = 3
+tabBar.ScrollingDirection = Enum.ScrollingDirection.X
+tabBar.AutomaticCanvasSize = Enum.AutomaticSize.X
+tabBar.CanvasSize = UDim2.new()
+tabBar.BorderSizePixel = 0
+
 tabBar.Parent =
 	panel
 
@@ -361,6 +367,7 @@ tabLayout.FillDirection =
 
 tabLayout.Padding =
 	UDim.new(0, 5)
+tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 tabLayout.Parent =
 	tabBar
@@ -1751,7 +1758,7 @@ makeLabel(
 
 makeLabel(
 	devPage,
-	"Inventory starts empty and persists by Character Slot. Use these controls instead of forced QA quantities. Throwable grants still respect equipped Ninja Bag capacity.",
+	"Inventory starts empty and persists by Character Slot. Use these controls instead of forced QA quantities. Each throwable stock now has its own independent maximum; equip only four types in the Ninja Bag.",
 	72,
 	12,
 	false
@@ -2350,17 +2357,163 @@ local function refresh()
 		)
 end
 
+
+---------------------------------------------------------------------
+-- WAYLESS v1.5: integrated QA pages (same F7 ScreenGui; server-validated)
+---------------------------------------------------------------------
+
+local function devCall(action: string, value: any?): (boolean, any?)
+	local ok, accepted, message, data = pcall(function()
+		return devRequest:InvokeServer(action, value)
+	end)
+	if not ok then setFeedback("Dev error: " .. tostring(accepted)); return false, nil end
+	setFeedback(tostring(message))
+	return accepted == true, data
+end
+
+local dojutsuPage = makePage("Dojutsu")
+makeLabel(dojutsuPage, "CLAN / MANGEKYO (PERSISTENT QA)", 24, 13, true)
+makeLabel(dojutsuPage, "These controls modify SAVED Uchiha progression. Only an Uchiha can use them. Use a test character.", 47, 12)
+local stageRow = makeRow(dojutsuPage)
+for stage=1,3 do
+	makeButton(stageRow, tostring(stage) .. " TOMOE", 1/3, function() devCall("ClanSetStage", stage) end)
+end
+local awakenRow = makeRow(dojutsuPage)
+makeButton(awakenRow, "AWAKEN RANDOM MS", 0.65, function() devCall("ClanAwakenMangekyo") end)
+makeButton(awakenRow, "CLEAR EYE STRAIN", 0.35, function() devCall("ClanResetEyeStrain") end)
+makeLabel(dojutsuPage,"SUSANOO COLOR",22,12,true)
+local mkColors = {"Crimson","Violet","Azure","Jade","Cyan","Amber","Gold"}
+for index=1,#mkColors,4 do
+	local row = makeRow(dojutsuPage)
+	for i=index, math.min(index+3,#mkColors) do
+		local key=mkColors[i]
+		makeButton(row,key,0.25,function() devCall("ClanSetMangekyoProperty",{Field="Color",Value=key}) end)
+	end
+end
+makeLabel(dojutsuPage,"SUSANOO WEAPON",22,12,true)
+local weaponRow = makeRow(dojutsuPage)
+for _,key in ipairs({"Fist","Sword","Shield"}) do
+	makeButton(weaponRow,key,1/3,function() devCall("ClanSetMangekyoProperty",{Field="Weapon",Value=key}) end)
+end
+makeLabel(dojutsuPage,"MANGEKYO ATTACK TECHNIQUE",22,12,true)
+local attackRow=makeRow(dojutsuPage)
+for _, key in ipairs({"Amaterasu","EntonSpear","YasakaMagatama"}) do
+	makeButton(attackRow,key,1/3,function() devCall("ClanSetMangekyoProperty",{Field="Attack",Value=key}) end)
+end
+makeLabel(dojutsuPage,"MANGEKYO CONTROL TECHNIQUE",22,12,true)
+local controlRow=makeRow(dojutsuPage)
+for _,key in ipairs({"Tsukuyomi","BlackWall"}) do
+	makeButton(controlRow,key,0.5,function() devCall("ClanSetMangekyoProperty",{Field="Control",Value=key}) end)
+end
+makeLabel(dojutsuPage,"Sharingan phases and Mangekyo mechanics are still controlled by Clan. The selected Iris remains independent from abilities.", 52, 12)
+
+local worldPage=makePage("World")
+makeLabel(worldPage,"SERVER TIME (ALL PLAYERS)",22,13,true)
+local timeRow=makeRow(worldPage)
+for _,item in ipairs({{"DAY","Morning"},{"AFTERNOON","Afternoon"},{"NIGHT","Night"},{"AUTO","Reset"}}) do
+	local id,label=item[1],item[2]
+	makeButton(timeRow,label,0.25,function() devCall("SetTime",id) end)
+end
+makeLabel(worldPage,"REGIONAL WEATHER — FORCE ALL ACTIVE REGIONS",40,13,true)
+local weatherTypes={"CLEAR","CLOUDY","LIGHT_RAIN","HEAVY_RAIN","FOG","AUTO"}
+for i=1,#weatherTypes,3 do
+	local row=makeRow(worldPage)
+	for j=i, math.min(i+2,#weatherTypes) do
+		local id=weatherTypes[j]
+		makeButton(row,id,1/3,function() devCall("SetWeather",id) end)
+	end
+end
+makeLabel(worldPage,"AUTO removes overrides. The Weather server applies forced states on its next regional scan; this does not replace the active weather system or its zone placement.",74,12)
+local chakraPageRow=makeRow(worldPage)
+makeButton(chakraPageRow,"INFINITE CHAKRA ON",0.5,function() devCall("SetInfiniteChakra",true) end)
+makeButton(chakraPageRow,"INFINITE CHAKRA OFF",0.5,function() devCall("SetInfiniteChakra",false) end)
+makeLabel(worldPage,"Infinite chakra is session-only, developer-authorized and server enforced. Normal chakra/cooldown/status checks stay unchanged when OFF.",66,12)
+
+local techniquesPage=makePage("Techniques")
+makeLabel(techniquesPage,"SESSION-ONLY TECHNIQUE LOADOUT",26,13,true)
+makeLabel(techniquesPage,"Use Content Bypass ON (Developer tab). Assign any REGISTERED equippable jutsu to a numeric slot (1–10). Cast with normal hotbar keys/animations. Nothing is learned or saved.",66,12)
+local techControlRow=makeRow(techniquesPage)
+local devSlotBox=makeBox(techControlRow,"Slot 1–10",0.18)
+devSlotBox.Text="1"
+local devTechBox=makeBox(techControlRow,"TechniqueId",0.48)
+makeButton(techControlRow,"ASSIGN",0.19,function()
+	devCall("SetDevTechniqueSlot",{Slot=tonumber(devSlotBox.Text),Id=devTechBox.Text})
+end)
+makeButton(techControlRow,"CLEAR",0.15,function()
+	devCall("SetDevTechniqueSlot",{Slot=tonumber(devSlotBox.Text),Id=""})
+end)
+local techActionRow=makeRow(techniquesPage)
+makeButton(techActionRow,"ENABLE BYPASS",0.5,function() devCall("SetContentBypass",true) end)
+makeButton(techActionRow,"RESET SESSION SLOTS",0.5,function() devCall("ClearDevTechniqueSlots") end)
+makeLabel(techniquesPage,"CHOOSE FROM REGISTERED JUTSUS",24,12,true)
+local techListContainer=Instance.new("Frame")
+techListContainer.Name="RegisteredTechniques"
+techListContainer.BackgroundTransparency=1
+techListContainer.Size=UDim2.new(1,-10,0,0)
+techListContainer.AutomaticSize=Enum.AutomaticSize.Y
+techListContainer.Parent=techniquesPage
+local techListLayout=Instance.new("UIListLayout")
+techListLayout.Padding=UDim.new(0,4)
+techListLayout.SortOrder=Enum.SortOrder.LayoutOrder
+techListLayout.Parent=techListContainer
+local loadedTechniqueButtons={}
+local function refreshTechniqueList()
+	for _,element in ipairs(loadedTechniqueButtons) do element:Destroy() end
+	table.clear(loadedTechniqueButtons)
+	local ok, list=devCall("ListTechniques")
+	if not ok or typeof(list)~="table" then return end
+	for _,entry in ipairs(list) do
+		if typeof(entry)=="table" and typeof(entry.Id)=="string" then
+			local row=makeRow(techListContainer,30)
+			local techniqueId=entry.Id
+			local title=entry.Label or techniqueId
+			makeButton(row,"[".. tostring(entry.Category or "") .. "] " .. tostring(title),1,function()
+				devTechBox.Text=techniqueId
+				devCall("SetDevTechniqueSlot",{Slot=tonumber(devSlotBox.Text),Id=techniqueId})
+			end)
+			table.insert(loadedTechniqueButtons,row)
+		end
+	end
+end
+local refreshTechRow=makeRow(techniquesPage)
+makeButton(refreshTechRow,"REFRESH TECHNIQUE LIST",1,refreshTechniqueList)
+
+local bagPage=makePage("Ninja Bag")
+makeLabel(bagPage,"ALL THROWABLE TYPES / FOUR ACTIVE SLOTS",30,13,true)
+makeLabel(bagPage,"Stock is now independent PER ITEM, up to InventoryMax_<ItemId>. Keep a bag equipped to throw. Equipping is limited to exactly four slots.",65,12)
+local fillRow=makeRow(bagPage)
+makeButton(fillRow,"FILL ALL THROWABLES TO INDIVIDUAL MAX + SAVE",1,function() invokeInventoryDev("FillNinjaBag") end)
+local bagSlotRow=makeRow(bagPage)
+local bagSlotBox=makeBox(bagSlotRow,"Slot 1–4",0.25)
+bagSlotBox.Text="1"
+local bagItemBox=makeBox(bagSlotRow,"Throwable Id",0.50)
+makeButton(bagSlotRow,"EQUIP",0.25,function()
+	devCall("SetNinjaBagSlot",{Slot=tonumber(bagSlotBox.Text),ItemId=bagItemBox.Text})
+end)
+local bagClearRow=makeRow(bagPage)
+makeButton(bagClearRow,"CLEAR SELECTED SLOT",1,function()
+	devCall("SetNinjaBagSlot",{Slot=tonumber(bagSlotBox.Text),ItemId=""})
+end)
+makeLabel(bagPage,"REGISTERED PROJECTILES — click to assign selected slot",30,12,true)
+local bagItems=InventoryCatalog.GetNinjaBagItems()
+for idx=1,#bagItems,2 do
+	local row=makeRow(bagPage)
+	for j=idx,math.min(idx+1,#bagItems) do
+		local item=bagItems[j]
+		makeButton(row,tostring(item.DisplayName or item.Id),0.5,function()
+			bagItemBox.Text=item.Id
+			devCall("SetNinjaBagSlot",{Slot=tonumber(bagSlotBox.Text),ItemId=item.Id})
+		end)
+	end
+end
+
 ---------------------------------------------------------------------
 -- TABS
 ---------------------------------------------------------------------
 
 local TAB_ORDER = {
-	"Overview",
-	"Origin",
-	"Progression",
-	"Rank",
-	"Status",
-	"Developer",
+	"Overview", "Origin", "Progression", "Rank", "Status", "Developer",
+	"Dojutsu", "Techniques", "World", "Ninja Bag",
 }
 
 local function showPage(
@@ -2404,13 +2557,7 @@ for _, name in ipairs(
 			"TextButton"
 		)
 
-	button.Size =
-		UDim2.new(
-			1 / #TAB_ORDER,
-			-5,
-			1,
-			0
-		)
+	button.Size = UDim2.fromOffset(92, 31)
 
 	button.Text =
 		name
@@ -2644,7 +2791,7 @@ showPage(
 )
 
 print(
-	"[WAYLESSDevMenu] READY v1.4 InventoryPersistence"
+	"[WAYLESSDevMenu] READY v1.5 ClanWorldInventory"
 		.. " | Toggle=F7+RightShift"
 		.. " | Tabs=Overview+Origin+Progression+Rank+Status+Developer"
 		.. " | Clans=8"

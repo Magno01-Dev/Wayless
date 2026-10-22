@@ -1647,6 +1647,33 @@ task.spawn(function()
 				elseif value == "Itachi" then { Attack = "Amaterasu", Control = "Tsukuyomi", Color = "Crimson", Iris = "Itachi" }
 				else nil
 			Clan.awakenMangekyo(player, forced)
+		elseif action == "SetMangekyoProperty" and typeof(value) == "table" then
+			local entry = progress[player]
+			if entry and entry.Loaded and entry.ClanId == "Uchiha" and entry.Stage >= 4 and entry.Mangekyo then
+				local field = value.Field
+				local choice = value.Value
+				local valid = false
+				if field == "Attack" then
+					local info = MangekyoCatalog.Abilities.Attack[choice]
+					valid = info ~= nil and info.Implemented ~= false
+				elseif field == "Control" then
+					local info = MangekyoCatalog.Abilities.Control[choice]
+					valid = info ~= nil and info.Implemented ~= false
+				elseif field == "Color" then
+					valid = MangekyoCatalog.Colors[choice] ~= nil
+				elseif field == "Weapon" then
+					local info = MangekyoCatalog.Weapons[choice]
+					valid = info ~= nil and info.Implemented ~= false
+				end
+				if valid then
+					entry.Mangekyo[field] = choice
+					saveProgress(player, entry)
+					local character = player.Character
+					if character and Clan.isModeActive(character, "SharinganActive") then
+						Clan.refreshMode(character, "SharinganActive")
+					end
+				end
+			end
 		elseif action == "SetEyeStrain" and typeof(value) == "number" then
 			setEyeStrain(player, value)
 		elseif action == "SetExecutions" and typeof(value) == "number" then

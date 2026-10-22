@@ -39,6 +39,11 @@ local ChakraConfig =
 local ChakraService =
 	{}
 
+local DeveloperAccessService = require(script.Parent:WaitForChild("Services"):WaitForChild("DeveloperAccessService"))
+local function devInfiniteChakra(player: Player): boolean
+	return DeveloperAccessService.IsDeveloper(player) and player:GetAttribute("DevInfiniteChakra") == true
+end
+
 
 local started =
 	false
@@ -1307,6 +1312,14 @@ function ChakraService.TrySpend(
 	end
 
 
+	-- Session-only developer option: do not deduct chakra or alter normal rules.
+	if devInfiniteChakra(player) then
+		state.Current = state.Max
+		character:SetAttribute("ChakraExhausted", false)
+		syncAttributes(state)
+		return true, "OK", state.Max
+	end
+
 	if state.Current + 0.0001 <
 		amount then
 
@@ -1702,6 +1715,13 @@ RunService.Heartbeat:
 					continue
 				end
 
+
+				if devInfiniteChakra(player) then
+					state.Current = state.Max
+					character:SetAttribute("ChakraExhausted", false)
+					syncAttributes(state)
+					continue
+				end
 
 				-- =============================
 				-- MANUAL CHAKRA CHARGE

@@ -12,7 +12,7 @@
 -- Save
 --
 -- All mutations use InventoryService and therefore respect configured max
--- amounts and Ninja Bag capacity.
+-- amounts (each projectile independently; four loadout slots unchanged).
 
 local ReplicatedStorage =
 	game:GetService(
@@ -42,6 +42,8 @@ local InventoryService =
 			"InventoryService"
 		)
 	)
+
+local InventoryCatalog = require(ReplicatedStorage:WaitForChild("InventoryCatalog"))
 
 local InventoryPersistenceService =
 	require(
@@ -145,6 +147,19 @@ request.OnServerInvoke =
 			Ok = false,
 			Reason = "InvalidAction",
 		}
+	end
+
+	if action == "FillNinjaBag" then
+		if not InventoryPersistenceService.IsReady(player) then
+			return {Ok=false, Reason="InventoryPersistenceNotReady"}
+		end
+		local filled = 0
+		for _, item in ipairs(InventoryCatalog.GetNinjaBagItems()) do
+			local success = InventoryService.SetAmount(player, item.Id, InventoryService.GetMaxAmount(player, item.Id))
+			if success then filled += 1 end
+		end
+		local saved = InventoryPersistenceService.SavePlayer(player, "DeveloperFillNinjaBag")
+		return {Ok=true, Reason="Filled " .. tostring(filled) .. " projectile types" .. (if saved then " / Saved" else " / SavePending")}
 	end
 
 	if action == "Save" then

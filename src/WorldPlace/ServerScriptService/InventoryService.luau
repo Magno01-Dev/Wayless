@@ -10,7 +10,7 @@
 -- NinjaBagAmount_<Projectile>
 -- NinjaBagMax_<Projectile>
 --
--- Ninja Bag capacity is enforced for INCREASES after EquipmentReady=true.
+-- Ninja Bag stock uses each item MaxAmount independently. Four equip slots remain elsewhere.
 
 local Players =
 	game:GetService(
@@ -430,59 +430,9 @@ function InventoryService.SetAmount(
 	local reason =
 		"OK"
 
-	-- Capacity applies only after EquipmentService has established the equipped
-	-- bag. Existing QA data can initialize first without being destroyed.
-	if item.NinjaBagEquippable ==
-		true
-		and requested > current
-		and player:GetAttribute(
-			"EquipmentReady"
-		) == true then
-
-		local bagCapacity =
-			safeInt(
-				player:GetAttribute(
-					"NinjaBagCapacity"
-				),
-				0
-			)
-
-		local used =
-			InventoryService.GetUsedNinjaBagCapacity(
-				player
-			)
-
-		local free =
-			math.max(
-				0,
-				bagCapacity
-				- used
-			)
-
-		local cost =
-			capacityCost(
-				item
-			)
-
-		local maxAdditional =
-			math.floor(
-				free
-				/ cost
-			)
-
-		finalAmount =
-			math.min(
-				requested,
-				current
-				+ maxAdditional
-			)
-
-		if finalAmount <
-			requested then
-			reason =
-				"ninja bag capacity limited"
-		end
-	end
+	-- Each throwable is stored up to its own catalog/character maximum.
+	-- NinjaBagCapacity no longer limits total INVENTORY stock. Only the four
+	-- authorized NinjaBag loadout slots determine which types can be used.
 
 	player:SetAttribute(
 		amountName(
@@ -615,7 +565,7 @@ print(
 	"[InventoryService] READY v1.2"
 		.. " | PersistentQuantities=ON"
 		.. " | ForcedStartingAmounts=OFF"
-		.. " | NinjaBagCapacity=ON"
+		.. " | NinjaBagInventoryCap=OFF"
 		.. " | LegacyMirror=ON"
 )
 

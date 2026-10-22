@@ -101,6 +101,16 @@ type PlayerState = {
 local states: {[Player]: PlayerState} =
 	{}
 
+-- Only in the active server session; never in DataStore payloads.
+local devSlots: {[Player]: {[number]: string}} = {}
+local DeveloperAccessService = require(Services:WaitForChild("DeveloperAccessService"))
+local function activeDevSlots(player: Player): {[number]: string}?
+	if DeveloperAccessService.HasContentBypass(player) then
+		return devSlots[player]
+	end
+	return nil
+end
+
 local function makeEmptySlots(): {[number]: string}
 	local slots: {[number]: string} =
 		{}
@@ -312,7 +322,7 @@ local function publish(
 		player:SetAttribute(
 			"TechniqueLoadoutSlot_"
 				.. tostring(slotIndex),
-			state.Slots[slotIndex]
+			(if activeDevSlots(player) and activeDevSlots(player)[slotIndex] then activeDevSlots(player)[slotIndex] else state.Slots[slotIndex])
 				or ""
 		)
 	end
@@ -555,8 +565,8 @@ function TechniqueLoadoutService.GetSlot(
 		return nil
 	end
 
-	local techniqueId =
-		state.Slots[slotIndex]
+	local overrides = activeDevSlots(player)
+	local techniqueId = if overrides and overrides[slotIndex] then overrides[slotIndex] else state.Slots[slotIndex]
 
 	if techniqueId == "" then
 		return nil
@@ -584,9 +594,8 @@ function TechniqueLoadoutService.GetSlots(
 	for slotIndex = 1,
 		SLOT_COUNT do
 
-		result[slotIndex] =
-			state.Slots[slotIndex]
-			or ""
+		local overrides = activeDevSlots(player)
+		result[slotIndex] = (if overrides and overrides[slotIndex] then overrides[slotIndex] else state.Slots[slotIndex]) or ""
 	end
 
 	return result
@@ -606,10 +615,11 @@ function TechniqueLoadoutService.FindSlot(
 		return nil
 	end
 
+	local overrides = activeDevSlots(player)
 	for slotIndex = 1,
 		SLOT_COUNT do
 
-		if state.Slots[slotIndex]
+		if (if overrides and overrides[slotIndex] then overrides[slotIndex] else state.Slots[slotIndex])
 			== techniqueId then
 
 			return slotIndex
@@ -627,6 +637,40 @@ function TechniqueLoadoutService.IsEquipped(
 		player,
 		techniqueId
 	) ~= nil
+end
+
+-- Developer slot injection uses the original 10-slot animation/hotbar transport.
+-- It neither learns techniques nor writes to persistence.
+function TechniqueLoadoutService.SetDevSlot(player: Player, slotIndex: any, techniqueId: any): (boolean, string)
+	if not DeveloperAccessService.IsDeveloper(player) or not DeveloperAccessService.HasContentBypass(player) then
+		return false, "DeveloperBypassRequired"
+	end
+	if not isValidSlotIndex(slotIndex) then return false, "InvalidSlot" end
+	if not TechniqueLoadoutService.IsReady(player) then return false, "LoadoutNotReady" end
+	if typeof(techniqueId) ~= "string" or #techniqueId > 80 then return false, "InvalidTechnique" end
+	if techniqueId ~= "" then
+		local entry: any = TechniqueRegistry.Get(techniqueId)
+		if not entry then return false, "UnknownTechnique" end
+		if entry.Module and entry.Module.NotEquippable == true then return false, "NotEquippable" end
+	end
+	local bySlot = devSlots[player]
+	if not bySlot then bySlot = {}; devSlots[player] = bySlot end
+	if techniqueId == "" then bySlot[slotIndex] = nil else bySlot[slotIndex] = techniqueId end
+	publish(player, states[player])
+	return true, "SessionSlotUpdated"
+end
+
+function TechniqueLoadoutService.ClearDevSlots(player: Player): (boolean, string)
+	if not DeveloperAccessService.IsDeveloper(player) then return false, "NotDeveloper" end
+	devSlots[player] = nil
+	local state = states[player]
+	if state then publish(player, state) end
+	return true, "SessionSlotsCleared"
+end
+
+function TechniqueLoadoutService.RefreshDevSlots(player: Player)
+	local state = states[player]
+	if state then publish(player, state) end
 end
 
 function TechniqueLoadoutService.Save(
@@ -877,6 +921,7 @@ function TechniqueLoadoutService.Start()
 					player
 				)
 
+				devSlots[player] = nil
 				states[player] =
 				nil
 			end
