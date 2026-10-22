@@ -9,6 +9,7 @@
 -- This service validates the submitted creation payload and commits a new life.
 
 local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local TextService = game:GetService("TextService")
@@ -16,6 +17,8 @@ local TextService = game:GetService("TextService")
 local Services = ServerScriptService:WaitForChild("Services")
 local AccountProfileService =
 	require(Services:WaitForChild("AccountProfileService"))
+
+local HairAppearance = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("HairAppearance"))
 
 local CharacterCreationService = {}
 
@@ -210,7 +213,8 @@ local function validateHairAssetIds(raw: any): (boolean, string, {number}?)
 end
 
 local function validateAppearance(
-	raw: any
+	raw: any,
+	clanId: string
 ): (boolean, string, {[string]: any}?)
 	if typeof(raw) ~= "table" then
 		return false, "AppearanceMissing", nil
@@ -295,11 +299,40 @@ local function validateAppearance(
 		return false, hairReason, nil
 	end
 
+	local hairColor, colorReason = HairAppearance.ResolveColor(clanId, raw.HairColorId)
+	if not hairColor then
+		return false, colorReason, nil
+	end
+
+	-- Server-authoritative dimensional validation on the actual R6 accessory
+	-- assembly, before ANY DataStore mutation; no client-supplied sizes accepted.
+	if #hairAssetIds > 0 then
+		local hairDescription = Instance.new("HumanoidDescription")
+		hairDescription.HairAccessory = table.concat(hairAssetIds, ",")
+		local loadedOk, loadedResult = pcall(function()
+			return Players:CreateHumanoidModelFromDescriptionAsync(
+				hairDescription,
+				Enum.HumanoidRigType.R6
+			)
+		end)
+		hairDescription:Destroy()
+		if not loadedOk or typeof(loadedResult) ~= "Instance"
+			or not loadedResult:IsA("Model") then
+			return false, "HairAssetLoadFailed", nil
+		end
+		local sizeOk, sizeReason = HairAppearance.ValidateAvatarHair(loadedResult, #hairAssetIds)
+		loadedResult:Destroy()
+		if not sizeOk then
+			return false, sizeReason, nil
+		end
+	end
+
 	return true, "AppearanceReady", {
 		Version = 8,
 		RigType = "R6",
 		SkinToneId = resolvedSkinToneId,
 		HairAssetIds = hairAssetIds,
+		HairColorId = hairColor.Id,
 		MouthStyleId = mouthStyleId,
 		BrowStyleId = browStyleId,
 		NoseStyleId = noseStyleId,
@@ -410,7 +443,7 @@ function CharacterCreationService.Commit(
 	end
 
 	local appearanceOk, appearanceReason, appearance =
-		validateAppearance(payload.Appearance)
+		validateAppearance(payload.Appearance, tostring(slot.PermanentOrigin.ClanId or ""))
 
 	if not appearanceOk or not appearance then
 		return false, appearanceReason, nil
