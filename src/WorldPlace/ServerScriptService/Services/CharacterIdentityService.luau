@@ -1643,23 +1643,12 @@ local function applyAppearance(
 			sourceResult :: Model
 
 
-		local expectedHairCount = 0
-		if hairString and hairString ~= "" then
-			for _ in string.gmatch(hairString, "[^,]+") do
-				expectedHairCount += 1
+		for _, child in ipairs(source:GetChildren()) do
+			if child:IsA("Accessory") then
+				local accessory = child:Clone()
+				HairAppearance.TintAccessory(accessory, hairEntry.Color)
+				humanoid:AddAccessory(accessory)
 			end
-		end
-		local validSize, sizeReason = HairAppearance.ValidateAvatarHair(source, expectedHairCount)
-		if validSize then
-			for _, child in ipairs(source:GetChildren()) do
-				if child:IsA("Accessory") then
-					local accessory = child:Clone()
-					HairAppearance.TintAccessory(accessory, hairEntry.Color)
-					humanoid:AddAccessory(accessory)
-				end
-			end
-		else
-			warn("[CharacterIdentityService] HAIR REJECTED", player.Name, sizeReason)
 		end
 		source:Destroy()
 	else
