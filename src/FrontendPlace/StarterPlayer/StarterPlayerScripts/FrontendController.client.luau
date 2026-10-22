@@ -1923,11 +1923,6 @@ local function rebuildPreviewModel(
 	local newModel =
 		modelResult :: Model
 
-	local hairOk, hairReason = HairAppearance.ValidateAvatarHair(newModel, #selectedHairAssetIds)
-	if not hairOk then
-		newModel:Destroy()
-		return false, "Hair rejected: " .. tostring(hairReason)
-	end
 	local hairEntry = HairAppearance.ResolveColor(creationClanId, selectedHairColorId)
 	if hairEntry then HairAppearance.TintAvatarHair(newModel, hairEntry.Color) end
 
