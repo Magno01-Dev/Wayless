@@ -2528,8 +2528,8 @@ local function refreshCreationButtons()
 				math.max(1, #colors)
 			)
 
-		-- The final Astra HUD intentionally exposes one shared clothing color.
-		-- Keep both canonical state fields synchronized so persistence remains unchanged.
+		-- One enabled Wardrobe group replaces the legacy color-driven table.
+		-- These indices are compatibility selectors only, not hair/clothing dyes.
 		selectedBottomColorIndex = selectedTopColorIndex
 
 		local topColor =
@@ -2608,12 +2608,7 @@ local function refreshCreationButtons()
 				)
 		end
 
-		creationUI.colorValue.Text =
-			string.format(
-				"%02d / %02d",
-				selectedTopColorIndex,
-				#colors
-			)
+		creationUI.colorValue.Text = "RESERVED"
 
 		creationUI.starterTopValue.Text =
 			string.format(
@@ -4330,28 +4325,14 @@ creationUI.glovesRightButton.MouseButton1Click:
 		shiftGloves(1)
 	end)
 
-local function shiftClothingColor(delta: number)
-	local catalog = cachedAppearanceCatalog
-	if not catalog then
-		return
-	end
-
-	local colors = getEnabledClothingColors(catalog)
-	selectedTopColorIndex = cycleIndexBy(selectedTopColorIndex, #colors, delta)
-	selectedBottomColorIndex = selectedTopColorIndex
-
-	-- Preserve the independent Top/Bottom design numbers while sharing one color.
-	refreshCreationButtons()
-	refreshPreviewClothingInPlace()
-end
-
-creationUI.colorLeftButton.MouseButton1Click:Connect(function()
-	shiftClothingColor(-1)
-end)
-
-creationUI.colorRightButton.MouseButton1Click:Connect(function()
-	shiftClothingColor(1)
-end)
+-- The former clothing color selector is reserved for a future wearable option.
+-- Its visuals remain in the approved Astra HUD; no selection or outfit mutation occurs.
+creationUI.colorLeftButton.Active = false
+creationUI.colorLeftButton.AutoButtonColor = false
+creationUI.colorRightButton.Active = false
+creationUI.colorRightButton.AutoButtonColor = false
+creationUI.colorValue.Active = false
+creationUI.colorValue.AutoButtonColor = false
 
 local function shiftTop(delta: number)
 	local catalog = cachedAppearanceCatalog
