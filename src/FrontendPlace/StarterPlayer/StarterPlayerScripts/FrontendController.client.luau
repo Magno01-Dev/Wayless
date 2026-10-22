@@ -969,9 +969,17 @@ local function getEnabledOptions(raw: any): {any}
 		return result
 	end
 
+	-- WAYLESS_FACEHD_CREATOR_HD_ONLY_V1
+	-- Solo mostrar caras HD en el selector; no borrar estilos legacy guardados.
+	local catalog = cachedAppearanceCatalog
+	local isFaceSelector = catalog ~= nil
+		and (raw == catalog.EyeStyles or raw == catalog.BrowStyles
+			or raw == catalog.NoseStyles or raw == catalog.MouthStyles)
 	for _, entry in ipairs(raw) do
 		if typeof(entry) == "table"
-			and entry.Enabled ~= false then
+			and entry.Enabled ~= false
+			and (not isFaceSelector or (typeof(entry.Id) == "string"
+				and string.match(entry.Id, "^HD_[MF]%d+$") ~= nil)) then
 
 			table.insert(result, entry)
 		end
@@ -2116,12 +2124,29 @@ local function addFaceDecal(
 	decal.Parent = head
 end
 
+-- WAYLESS_FACEHD_FRONTEND_HYUGA_SLOT_V1
+-- Este ajuste es SOLO visual; respeta EyeStyleId y PermanentOrigin.ClanId.
+local function resolveHyugaCreatorEye(eyeEntry: any, clanId: string?): string?
+	local normal = if typeof(eyeEntry) == "table" then eyeEntry.Image else nil
+	if clanId ~= "Hyuga" or typeof(eyeEntry) ~= "table" then return normal end
+	local styleId = eyeEntry.Id
+	local family = if typeof(styleId) == "string" then string.match(styleId, "^HD_([MF]%d+)$") else nil
+	if not family then return normal end
+	local shared = ReplicatedStorage:FindFirstChild("Shared")
+	local module = shared and shared:FindFirstChild("FaceHDIntegration")
+	if not module or not module:IsA("ModuleScript") then return normal end
+	local ok, integration = pcall(require, module)
+	if not ok or typeof(integration) ~= "table" then return normal end
+	return integration.Image(integration.Path(family, "ojos", "neutral", "byakugan")) or normal
+end
+
 local function applyFaceLayers(
 	model: Model,
 	mouthEntry: any,
 	browEntry: any,
 	noseEntry: any,
-	eyeEntry: any
+	eyeEntry: any,
+	clanId: string?
 )
 	local head =
 		model:FindFirstChild("Head")
@@ -2137,9 +2162,7 @@ local function applyFaceLayers(
 	addFaceDecal(
 		head,
 		"WAYLESS_Eyes",
-		typeof(eyeEntry) == "table"
-			and eyeEntry.Image
-			or nil,
+		resolveHyugaCreatorEye(eyeEntry, clanId),
 		10
 	)
 
@@ -2260,7 +2283,8 @@ local function applyPreviewAppearanceOnce()
 		mouth,
 		brow,
 		nose,
-		eye
+		eye,
+		creationClanId
 	)
 
 	refreshCreationView()
@@ -3498,7 +3522,7 @@ local function buildSlotPortrait(viewport: ViewportFrame, slotView: any, generat
 	if shoes or gloves then
 		applyPreviewWearables(model, shoes, gloves)
 	end
-	applyFaceLayers(model, mouth, brow, nose, eye)
+	applyFaceLayers(model, mouth, brow, nose, eye, portraitClan)
 
 	-- Keep the portrait's world isolated from Workspace.
 	local world = Instance.new("WorldModel")
