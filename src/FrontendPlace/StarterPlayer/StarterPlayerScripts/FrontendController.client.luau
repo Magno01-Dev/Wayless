@@ -4331,8 +4331,7 @@ creationUI.colorLeftButton.Active = false
 creationUI.colorLeftButton.AutoButtonColor = false
 creationUI.colorRightButton.Active = false
 creationUI.colorRightButton.AutoButtonColor = false
-creationUI.colorValue.Active = false
-creationUI.colorValue.AutoButtonColor = false
+-- ColorValue is a TextLabel, not a button. Leave it untouched.
 
 local function shiftTop(delta: number)
 	local catalog = cachedAppearanceCatalog
