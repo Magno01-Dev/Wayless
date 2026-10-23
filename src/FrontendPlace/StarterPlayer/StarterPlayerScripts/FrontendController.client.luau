@@ -413,6 +413,8 @@ if not sharedModules then
 end
 
 local HairAppearance = require(sharedModules:WaitForChild("HairAppearance"))
+-- WAYLESS_CLAN_BACK_EMBLEM_CREATOR_V1
+local ClanBackEmblem = require(sharedModules:WaitForChild("ClanBackEmblem"))
 
 -- FRONTEND COMMERCE
 local commerceConfigModule =
@@ -2215,6 +2217,7 @@ local function refreshPreviewClothingInPlace()
 		top,
 		bottom
 	)
+	ClanBackEmblem.Apply(previewModel, creationClanId, top.Id)
 
 	refreshCreationView()
 	status.Text = "Creator ready"
@@ -2286,6 +2289,7 @@ local function applyPreviewAppearanceOnce()
 		eye,
 		creationClanId
 	)
+	ClanBackEmblem.Apply(previewModel, creationClanId, top and top.Id)
 
 	refreshCreationView()
 
@@ -3523,6 +3527,7 @@ local function buildSlotPortrait(viewport: ViewportFrame, slotView: any, generat
 		applyPreviewWearables(model, shoes, gloves)
 	end
 	applyFaceLayers(model, mouth, brow, nose, eye, portraitClan)
+	ClanBackEmblem.Apply(model, portraitClan, starterOutfit and starterOutfit.TopId)
 
 	-- Keep the portrait's world isolated from Workspace.
 	local world = Instance.new("WorldModel")
